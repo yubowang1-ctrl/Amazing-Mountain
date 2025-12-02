@@ -305,6 +305,10 @@ void Realtime::buildForest() {
             float treeScaleBase = glm::mix(0.12f, 0.28f, size01);
             float treeScale     = treeScaleBase * (0.8f + 0.4f * dist01(rng));
 
+            // Adjustable: for controlling the size of the generating L-system tree
+            const float TREE_GLOBAL_SCALE = 50.f;
+            treeScale *= TREE_GLOBAL_SCALE;
+
             float yaw   = 2.f * float(M_PI) * dist01(rng);
             float tiltX = glm::radians((dist01(rng) - 0.5f) * 8.f); // [-4°,4°]
             float tiltZ = glm::radians((dist01(rng) - 0.5f) * 8.f);
