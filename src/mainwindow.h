@@ -28,6 +28,11 @@ private:
     void connectNear();
     void connectFar();
 
+    void connectFogHeight();
+    void connectFogDensity();
+    void connectWaveSpeed();
+    void connectWaveStrength();
+
     // From old Project 6
     // void connectPerPixelFilter();
     // void connectKernelBasedFilter();
@@ -62,6 +67,15 @@ private:
     QDoubleSpinBox *nearBox;
     QDoubleSpinBox *farBox;
 
+    QSlider *fogHeightSlider;
+    QSlider *fogDensitySlider;
+    QSlider *waveSpeedSlider;
+    QSlider *waveStrengthSlider;
+    QDoubleSpinBox *fogHeightBox;
+    QDoubleSpinBox *fogDensityBox;
+    QDoubleSpinBox *waveSpeedBox;
+    QDoubleSpinBox *waveStrengthBox;
+
     // Extra Credit:
     QCheckBox *ec1;
     QCheckBox *ec2;
@@ -85,6 +99,15 @@ private slots:
     void onValChangeFarSlider(int newValue);
     void onValChangeNearBox(double newValue);
     void onValChangeFarBox(double newValue);
+
+    void onValChangeFogHeightSlider(int newValue);
+    void onValChangeFogHeightBox(double newValue);
+    void onValChangeFogDensitySlider(int newValue);
+    void onValChangeFogDensityBox(double newValue);
+    void onValChangeWaveSpeedSlider(int newValue);
+    void onValChangeWaveSpeedBox(double newValue);
+    void onValChangeWaveStrengthSlider(int newValue);
+    void onValChangeWaveStrengthBox(double newValue);
 
     // Extra Credit:
     void onExtraCredit1();

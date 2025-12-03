@@ -160,6 +160,7 @@ private:
     GLMesh m_waterMesh;
     GLuint m_progWater      = 0;
     GLuint m_texWaterNormal = 0;
+    GLuint m_texWaterDuDv   = 0;
     float  m_time           = 0.f; // time used for rolling UV
 
     // skybox

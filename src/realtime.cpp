@@ -585,7 +585,8 @@ void Realtime::initializeGL() {
         m_texRockNormal  = loadTexture2D(":/resources/textures/terrain/rock_beach/normal.jpg", false);
         m_texBeachNormal = loadTexture2D(":/resources/textures/terrain/beach/normal.jpg", false);
                 m_texRockHighNormal = loadTexture2D(":/resources/textures/terrain/rock/normal.jpg", false);
-        m_texWaterNormal = loadTexture2D(":/resources/textures/water_normal_tile.jpg", false);
+        m_texWaterNormal = loadTexture2D(":/resources/textures/water_normal.jpg", false);
+        m_texWaterDuDv   = loadTexture2D(":/resources/textures/water_dudv.jpg", false);
         m_texSnowNormal = loadTexture2D(":/resources/textures/terrain/snow/normal.jpg", false);
 
         m_texGrassRough = loadTexture2D(":/resources/textures/terrain/grass/roughness.jpg", false);
@@ -666,7 +667,9 @@ void Realtime::paintGL() {
 
     // sky color + fog density
     glm::vec3 fogColor(0.55f, 0.70f, 0.90f); // FIXME: can be set similar to color of the sky and horizon.
-    float fogDensity = 0.02f;                // 0.01 to 0.03
+    float fogDensity      = settings.fogDensity;
+    float fogHeight       = settings.fogHeight;
+    float fogHeightFalloff = 0.35f;
 
     // skybox
     if (m_progSky && m_skyCube) {
@@ -727,6 +730,9 @@ void Realtime::paintGL() {
 
         glUniform3fv(glGetUniformLocation(m_progTerrain, "uFogColor"),   1, &fogColor[0]);
         glUniform1f (glGetUniformLocation(m_progTerrain, "uFogDensity"),    fogDensity);
+        glUniform1f (glGetUniformLocation(m_progTerrain, "uFogHeight"),   fogHeight);
+        glUniform1f (glGetUniformLocation(m_progTerrain, "uFogHeightFalloff"),
+                    fogHeightFalloff);
 
         glUniform1f(glGetUniformLocation(m_progTerrain, "uSeaHeight"),   m_seaHeightWorld);
         glUniform1f(glGetUniformLocation(m_progTerrain, "uHeightScale"), m_heightScaleWorld);
@@ -801,49 +807,57 @@ void Realtime::paintGL() {
     }
 
     // water
-    if (m_progWater && m_texWaterNormal) {
+    if (m_progWater && m_texWaterNormal && m_texWaterDuDv) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         glUseProgram(m_progWater);
 
-        auto set4 = [&](const char *n, const glm::mat4 &M){
-            glUniformMatrix4fv(glGetUniformLocation(m_progWater, n),
+        auto setWaterMat4 = [&](const char *name, const glm::mat4 &M){
+            glUniformMatrix4fv(glGetUniformLocation(m_progWater, name),
                                1, GL_FALSE, &M[0][0]);
         };
-        set4("uProj",  m_cam.proj());
-        set4("uView",  m_cam.view());
-        set4("uModel", m_terrainModel); // same model matrix used in terrain
 
-        glUniform3fv(glGetUniformLocation(m_progWater, "uEye"), 1, &m_cam.eye[0]);
+        // Matrices
+        setWaterMat4("uProj",  m_cam.proj());
+        setWaterMat4("uView",  m_cam.view());
+        setWaterMat4("uModel", m_terrainModel); // water quad lives in same world space
 
-        // Water uses softer lighting for better visual appearance
-        glm::vec3 waterSunColor(1.5f);   // intentionally dimmer than terrain
-        glm::vec3 waterAmbient(0.25f);   // intentionally darker
+        // Camera & light (names from your shader)
+        glUniform3fv(glGetUniformLocation(m_progWater, "uCameraPos"),
+                     1, &m_cam.eye[0]);
+        glUniform3fv(glGetUniformLocation(m_progWater, "uLightDir"),
+                     1, &sunDir[0]);
 
-        glUniform3fv(glGetUniformLocation(m_progWater, "uSunDir"),       1, &sunDir[0]);
-        glUniform3fv(glGetUniformLocation(m_progWater, "uSunColor"),     1, &waterSunColor[0]);
-        glUniform3fv(glGetUniformLocation(m_progWater, "uAmbientColor"), 1, &waterAmbient[0]);
+        // Water base color (match your solo project)
+        glm::vec3 waterColor(0.0f, 0.25f, 0.5f);
+        glUniform3fv(glGetUniformLocation(m_progWater, "uWaterColor"),
+                     1, &waterColor[0]);
 
-        // Adjustable: water color and transparency specs
-        glm::vec3 shallow(0.12, 0.4, 0.6);;
-        glm::vec3 deep(0.02, 0.1, 0.3);
-        glUniform3fv(glGetUniformLocation(m_progWater, "uWaterColorShallow"), 1, &shallow[0]);
-        glUniform3fv(glGetUniformLocation(m_progWater, "uWaterColorDeep"),    1, &deep[0]);
-        glUniform1f(glGetUniformLocation(m_progWater, "uWaterAlpha"), 0.65f);
+        // Time & wave params (copy from your GLWidget)
+        float t = fmodf(m_time, 10000.f);
+        glUniform1f(glGetUniformLocation(m_progWater, "uTime"),         t);
+        glUniform1f(glGetUniformLocation(m_progWater, "uWaveSpeed"),    settings.waveSpeed);
+        glUniform1f(glGetUniformLocation(m_progWater, "uWaveStrength"), settings.waveStrength);
+        glUniform1f(glGetUniformLocation(m_progWater, "uWaveScale"),    3.0f);
 
-        // normal scrolling parameters for water "scrolling texture"
-        glUniform1f(glGetUniformLocation(m_progWater, "uTime"),          m_time);
-        glUniform1f(glGetUniformLocation(m_progWater, "uTiling"),        3.0f);
-        glUniform1f(glGetUniformLocation(m_progWater, "uScrollSpeed"),   0.05f);
-        glm::vec2 scrollDir(1.0f, 0.3f);
-        glUniform2fv(glGetUniformLocation(m_progWater, "uScrollDir"),    1, &scrollDir[0]);
-        glUniform1f(glGetUniformLocation(m_progWater, "uNormalStrength"),0.4f);
+        // Fog – same as terrain/forest, but your shader uses height-fog
+        glUniform3fv(glGetUniformLocation(m_progWater, "uFogColor"),   1, &fogColor[0]);
+        glUniform1f (glGetUniformLocation(m_progWater, "uFogDensity"),  fogDensity);
+        glUniform1f (glGetUniformLocation(m_progWater, "uFogHeight"),   fogHeight);
+        glUniform1f (glGetUniformLocation(m_progWater, "uFogHeightFalloff"),
+                    fogHeightFalloff);
 
+        // Bind DuDv + normal
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, m_texWaterNormal);
-        glUniform1i(glGetUniformLocation(m_progWater, "uNormalMap"), 0);
+        glBindTexture(GL_TEXTURE_2D, m_texWaterDuDv);
+        glUniform1i(glGetUniformLocation(m_progWater, "uDuDvMap"), 0);
 
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, m_texWaterNormal);
+        glUniform1i(glGetUniformLocation(m_progWater, "uNormalMap"), 1);
+
+        // Draw water mesh
         m_waterMesh.draw();
 
         glDisable(GL_BLEND);
@@ -868,6 +882,9 @@ void Realtime::paintGL() {
         glUniform3fv(glGetUniformLocation(m_progForest,"uAmbientColor"),1, &ambColor[0]);
         glUniform3fv(glGetUniformLocation(m_progForest,"uFogColor"),    1, &fogColor[0]);
         glUniform1f(glGetUniformLocation(m_progForest,"uFogDensity"),      fogDensity);
+        glUniform1f (glGetUniformLocation(m_progForest,"uFogHeight"),      fogHeight);
+        glUniform1f (glGetUniformLocation(m_progForest,"uFogHeightFalloff"),
+                    fogHeightFalloff);
 
         // first, draw the tree branches (brown texture)
         glm::vec3 barkKa(0.1f, 0.08f, 0.05f);

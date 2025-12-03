@@ -13,6 +13,12 @@ struct Settings {
     int shapeParameter6 = 1; // leaf density
     float nearPlane = 1;
     float farPlane = 1;
+
+    float fogDensity    = 0.06f;  // 0.01–0.30
+    float fogHeight     = 0.0f;   // world-space y
+    float waveSpeed     = 0.05f;  // 0.00–0.20
+    float waveStrength  = 0.02f;  // 0.00–0.10
+
     bool perPixelFilter = false;
     bool kernelBasedFilter = false;
     bool extraCredit1 = false;

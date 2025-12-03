@@ -13,11 +13,24 @@ void MainWindow::initialize() {
     realtime = new Realtime;
     aspectRatioWidget = new AspectRatioWidget(this);
     aspectRatioWidget->setAspectWidget(realtime, 3.f/4.f);
-    QHBoxLayout *hLayout = new QHBoxLayout; // horizontal alignment
-    QVBoxLayout *vLayout = new QVBoxLayout(); // vertical alignment
+
+    // Main layout: [ left controls | viewport | right controls ]
+    QHBoxLayout *hLayout = new QHBoxLayout;
+
+    // Existing left panel – KEEP the name vLayout so all old code still works
+    QVBoxLayout *vLayout = new QVBoxLayout();
     vLayout->setAlignment(Qt::AlignTop);
+
+    // NEW right panel for water/fog
+    QVBoxLayout *vLayoutRight = new QVBoxLayout();
+    vLayoutRight->setAlignment(Qt::AlignTop);
+
+    // Order: left panel, viewport, right panel
     hLayout->addLayout(vLayout);
     hLayout->addWidget(aspectRatioWidget, 1);
+    hLayout->addLayout(vLayoutRight);
+
+
     this->setLayout(hLayout);
 
     // Create labels in sidebox
@@ -285,6 +298,103 @@ void MainWindow::initialize() {
     vLayout->addWidget(ec3);
     vLayout->addWidget(ec4);
 
+    // === Right-side panel: Water & Fog ===
+    // QFont font;
+    font.setPointSize(12);   // or reuse the same font you used above
+
+    QLabel *waterFogLabel = new QLabel("Water & Fog");
+    waterFogLabel->setFont(font);
+
+    QLabel *fogHeightLabel    = new QLabel("Fog height");
+    fogHeightLabel->setFont(font);
+    QLabel *fogDensityLabel   = new QLabel("Fog density");
+    fogDensityLabel->setFont(font);
+    QLabel *waveSpeedLabel    = new QLabel("Wave speed");
+    waveSpeedLabel->setFont(font);
+    QLabel *waveStrengthLabel = new QLabel("Wave strength");
+    waveStrengthLabel->setFont(font);
+
+    // Each row: [ slider | spin box ], same pattern as the left side
+
+    // Fog height
+    fogHeightSlider = new QSlider(Qt::Horizontal);
+    fogHeightSlider->setTickInterval(1);
+    fogHeightSlider->setMinimum(-100);  // -10.0
+    fogHeightSlider->setMaximum(200);   // +20.0
+    fogHeightSlider->setValue(int(settings.fogHeight * 10.0f));
+
+    fogHeightBox = new QDoubleSpinBox();
+    fogHeightBox->setMinimum(-10.0);
+    fogHeightBox->setMaximum(20.0);
+    fogHeightBox->setSingleStep(0.1);
+    fogHeightBox->setValue(settings.fogHeight);
+
+    QHBoxLayout *fogHeightLayout = new QHBoxLayout();
+    fogHeightLayout->addWidget(fogHeightSlider);
+    fogHeightLayout->addWidget(fogHeightBox);
+
+    // Fog density
+    fogDensitySlider = new QSlider(Qt::Horizontal);
+    fogDensitySlider->setTickInterval(1);
+    fogDensitySlider->setMinimum(1);    // 0.01
+    fogDensitySlider->setMaximum(30);   // 0.30
+    fogDensitySlider->setValue(int(settings.fogDensity * 100.0f));
+
+    fogDensityBox = new QDoubleSpinBox();
+    fogDensityBox->setMinimum(0.01);
+    fogDensityBox->setMaximum(0.30);
+    fogDensityBox->setSingleStep(0.01);
+    fogDensityBox->setValue(settings.fogDensity);
+
+    QHBoxLayout *fogDensityLayout = new QHBoxLayout();
+    fogDensityLayout->addWidget(fogDensitySlider);
+    fogDensityLayout->addWidget(fogDensityBox);
+
+    // Wave speed
+    waveSpeedSlider = new QSlider(Qt::Horizontal);
+    waveSpeedSlider->setTickInterval(1);
+    waveSpeedSlider->setMinimum(0);     // 0.00
+    waveSpeedSlider->setMaximum(20);    // 0.20
+    waveSpeedSlider->setValue(int(settings.waveSpeed * 100.0f));
+
+    waveSpeedBox = new QDoubleSpinBox();
+    waveSpeedBox->setMinimum(0.0);
+    waveSpeedBox->setMaximum(0.20);
+    waveSpeedBox->setSingleStep(0.01);
+    waveSpeedBox->setValue(settings.waveSpeed);
+
+    QHBoxLayout *waveSpeedLayout = new QHBoxLayout();
+    waveSpeedLayout->addWidget(waveSpeedSlider);
+    waveSpeedLayout->addWidget(waveSpeedBox);
+
+    // Wave strength
+    waveStrengthSlider = new QSlider(Qt::Horizontal);
+    waveStrengthSlider->setTickInterval(1);
+    waveStrengthSlider->setMinimum(0);   // 0.00
+    waveStrengthSlider->setMaximum(10);  // 0.10
+    waveStrengthSlider->setValue(int(settings.waveStrength * 100.0f));
+
+    waveStrengthBox = new QDoubleSpinBox();
+    waveStrengthBox->setMinimum(0.0);
+    waveStrengthBox->setMaximum(0.10);
+    waveStrengthBox->setSingleStep(0.01);
+    waveStrengthBox->setValue(settings.waveStrength);
+
+    QHBoxLayout *waveStrengthLayout = new QHBoxLayout();
+    waveStrengthLayout->addWidget(waveStrengthSlider);
+    waveStrengthLayout->addWidget(waveStrengthBox);
+
+    // Add everything to the right-hand layout
+    vLayoutRight->addWidget(waterFogLabel);
+    vLayoutRight->addWidget(fogHeightLabel);
+    vLayoutRight->addLayout(fogHeightLayout);
+    vLayoutRight->addWidget(fogDensityLabel);
+    vLayoutRight->addLayout(fogDensityLayout);
+    vLayoutRight->addWidget(waveSpeedLabel);
+    vLayoutRight->addLayout(waveSpeedLayout);
+    vLayoutRight->addWidget(waveStrengthLabel);
+    vLayoutRight->addLayout(waveStrengthLayout);
+
     connectUIElements();
 
     // Set default values of 5 for tesselation parameters
@@ -300,6 +410,7 @@ void MainWindow::initialize() {
     // Set default values for near and far planes
     onValChangeNearBox(0.1f);
     onValChangeFarBox(10.f);
+
 }
 
 void MainWindow::finish() {
@@ -321,6 +432,12 @@ void MainWindow::connectUIElements() {
     connectParam6();
     connectNear();
     connectFar();
+
+    connectFogHeight();
+    connectFogDensity();
+    connectWaveSpeed();
+    connectWaveStrength();
+
     connectExtraCredit();
 }
 
@@ -398,6 +515,38 @@ void MainWindow::connectExtraCredit() {
     connect(ec2, &QCheckBox::clicked, this, &MainWindow::onExtraCredit2);
     connect(ec3, &QCheckBox::clicked, this, &MainWindow::onExtraCredit3);
     connect(ec4, &QCheckBox::clicked, this, &MainWindow::onExtraCredit4);
+}
+
+void MainWindow::connectFogHeight() {
+    connect(fogHeightSlider, &QSlider::valueChanged,
+            this, &MainWindow::onValChangeFogHeightSlider);
+    connect(fogHeightBox,
+            static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+            this, &MainWindow::onValChangeFogHeightBox);
+}
+
+void MainWindow::connectFogDensity() {
+    connect(fogDensitySlider, &QSlider::valueChanged,
+            this, &MainWindow::onValChangeFogDensitySlider);
+    connect(fogDensityBox,
+            static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+            this, &MainWindow::onValChangeFogDensityBox);
+}
+
+void MainWindow::connectWaveSpeed() {
+    connect(waveSpeedSlider, &QSlider::valueChanged,
+            this, &MainWindow::onValChangeWaveSpeedSlider);
+    connect(waveSpeedBox,
+            static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+            this, &MainWindow::onValChangeWaveSpeedBox);
+}
+
+void MainWindow::connectWaveStrength() {
+    connect(waveStrengthSlider, &QSlider::valueChanged,
+            this, &MainWindow::onValChangeWaveStrengthSlider);
+    connect(waveStrengthBox,
+            static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+            this, &MainWindow::onValChangeWaveStrengthBox);
 }
 
 // From old Project 6
@@ -523,6 +672,55 @@ void MainWindow::onValChangeFarBox(double newValue) {
     settings.farPlane = farBox->value();
     realtime->settingsChanged();
 }
+
+void MainWindow::onValChangeFogHeightSlider(int newValue) {
+    fogHeightBox->setValue(newValue / 10.0);   // -10.0 .. +20.0 in 0.1 steps
+    settings.fogHeight = fogHeightBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeFogHeightBox(double newValue) {
+    fogHeightSlider->setValue(int(newValue * 10.0));
+    settings.fogHeight = fogHeightBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeFogDensitySlider(int newValue) {
+    fogDensityBox->setValue(newValue / 100.0); // 0.01 .. 0.30
+    settings.fogDensity = fogDensityBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeFogDensityBox(double newValue) {
+    fogDensitySlider->setValue(int(newValue * 100.0));
+    settings.fogDensity = fogDensityBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeWaveSpeedSlider(int newValue) {
+    waveSpeedBox->setValue(newValue / 100.0);  // 0.00 .. 0.20
+    settings.waveSpeed = waveSpeedBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeWaveSpeedBox(double newValue) {
+    waveSpeedSlider->setValue(int(newValue * 100.0));
+    settings.waveSpeed = waveSpeedBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeWaveStrengthSlider(int newValue) {
+    waveStrengthBox->setValue(newValue / 100.0); // 0.00 .. 0.10
+    settings.waveStrength = waveStrengthBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeWaveStrengthBox(double newValue) {
+    waveStrengthSlider->setValue(int(newValue * 100.0));
+    settings.waveStrength = waveStrengthBox->value();
+    realtime->settingsChanged();
+}
+
 
 // Extra Credit:
 

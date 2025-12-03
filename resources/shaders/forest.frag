@@ -14,6 +14,8 @@ uniform vec3 uAmbientColor;
 
 uniform vec3  uFogColor;
 uniform float uFogDensity;
+uniform float uFogHeight;
+uniform float uFogHeightFalloff;
 
 struct Material {
     vec3 ka;
@@ -23,6 +25,19 @@ struct Material {
 };
 
 uniform Material u_mat;
+
+vec3 applyFog(vec3 color)
+{
+    float dist = length(uEye - v_worldPos);
+    float fogExp = 1.0 - exp(-uFogDensity * dist);
+
+    float h = v_worldPos.y - uFogHeight;
+    float heightFactor = clamp(exp(-uFogHeightFalloff * h), 0.0, 1.0);
+
+    float fogFactor = clamp(fogExp * heightFactor, 0.0, 1.0);
+    return mix(color, uFogColor, fogFactor);
+}
+
 
 void main()
 {
@@ -56,7 +71,6 @@ void main()
     float fog  = 1.0 - exp(-uFogDensity * dist);
     fog = clamp(fog, 0.0, 1.0);
 
-    color = mix(color, uFogColor, fog);
-
+    color = applyFog(color);
     fragColor = vec4(color, 1.0);
 }

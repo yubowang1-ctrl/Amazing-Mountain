@@ -41,6 +41,8 @@ uniform sampler2D uSnowRough;
 // Fog
 uniform vec3  uFogColor;    // should roughly match sky horizon color
 uniform float uFogDensity;  // e.g. 0.02
+uniform float uFogHeight;
+uniform float uFogHeightFalloff;
 
 // Height normalization
 uniform float uSeaHeight;    // world-space sea level
@@ -168,6 +170,20 @@ vec3 triplanarSampleColor(sampler2D tex, vec3 worldPos, vec3 normal, float tilin
     vec3 cZ = texture(tex, uvZ).rgb;
 
     return cX * n.x + cY * n.y + cZ * n.z;
+}
+
+vec3 applyFog(vec3 color)
+{
+    // distance-based exponential fog
+    float dist = length(uEye - v_worldPos);
+    float fogExp = 1.0 - exp(-uFogDensity * dist);
+
+    // height-based modulation
+    float h = v_worldPos.y - uFogHeight;
+    float heightFactor = clamp(exp(-uFogHeightFalloff * h), 0.0, 1.0);
+
+    float fogFactor = clamp(fogExp * heightFactor, 0.0, 1.0);
+    return mix(color, uFogColor, fogFactor);
 }
 
 // Main
@@ -319,7 +335,6 @@ void main()
     float fog  = 1.0 - exp(-uFogDensity * dist);
     fog = clamp(fog, 0.0, 1.0);
 
-    color = mix(color, uFogColor, fog);
-
+    color = applyFog(color);
     fragColor = vec4(color, 1.0);
 }

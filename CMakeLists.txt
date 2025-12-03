@@ -108,6 +108,8 @@ qt6_add_resources(${PROJECT_NAME} "Resources"
         resources/textures/terrain/rock/normal.jpg
         resources/textures/terrain/snow/normal.jpg
         resources/textures/water_normal_tile.jpg
+        resources/textures/water_dudv.jpg
+        resources/textures/water_normal.jpg
 
         resources/textures/terrain/grass/roughness.jpg
         resources/textures/terrain/rock_beach/roughness.jpg
