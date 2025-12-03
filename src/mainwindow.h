@@ -32,10 +32,9 @@ private:
     // void connectPerPixelFilter();
     // void connectKernelBasedFilter();
 
-    void connectUploadFile();
-    void connectSaveImage();
+    // void connectUploadFile();
+    // void connectSaveImage();
     void connectExtraCredit();
-
     void connectColorGrade();
 
     Realtime *realtime;
@@ -45,8 +44,8 @@ private:
     // QCheckBox *filter1;
     // QCheckBox *filter2;
 
-    QPushButton *uploadFile;
-    QPushButton *saveImage;
+    // QPushButton *uploadFile;
+    // QPushButton *saveImage;
     QSlider *p1Slider;
     QSlider *p2Slider;
     QSlider *p3Slider;
@@ -78,8 +77,8 @@ private slots:
     // void onPerPixelFilter();
     // void onKernelBasedFilter();
 
-    void onUploadFile();
-    void onSaveImage();
+    // void onUploadFile();
+    // void onSaveImage();
     void onValChangeP1(int newValue);
     void onValChangeP2(int newValue);
     void onValChangeP3(int newValue);

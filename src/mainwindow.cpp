@@ -81,11 +81,11 @@ void MainWindow::initialize() {
     // filter2->setChecked(false);
 
     // Create file uploader for scene file
-    uploadFile = new QPushButton();
-    uploadFile->setText(QStringLiteral("Upload Scene File"));
+    // uploadFile = new QPushButton();
+    // uploadFile->setText(QStringLiteral("Upload Scene File"));
     
-    saveImage = new QPushButton();
-    saveImage->setText(QStringLiteral("Save Image"));
+    // saveImage = new QPushButton();
+    // saveImage->setText(QStringLiteral("Save Image"));
 
     // Creates the boxes containing the parameter sliders and number boxes
     QGroupBox *p1Layout = new QGroupBox(); // horizonal slider 1 alignment
@@ -260,8 +260,8 @@ void MainWindow::initialize() {
     ec4->setText(QStringLiteral("Extra Credit 4"));
     ec4->setChecked(false);
 
-    vLayout->addWidget(uploadFile);
-    vLayout->addWidget(saveImage);
+    // vLayout->addWidget(uploadFile);
+    // vLayout->addWidget(saveImage);
     vLayout->addWidget(tesselation_label);
     vLayout->addWidget(param1_label);
     vLayout->addWidget(p1Layout);
@@ -328,8 +328,8 @@ void MainWindow::connectUIElements() {
     // From old Project 6
     //connectPerPixelFilter();
     //connectKernelBasedFilter();
-    connectUploadFile();
-    connectSaveImage();
+    // connectUploadFile();
+    // connectSaveImage();
     connectParam1();
     connectParam2();
     connectParam3();
@@ -351,13 +351,13 @@ void MainWindow::connectUIElements() {
 //     connect(filter2, &QCheckBox::clicked, this, &MainWindow::onKernelBasedFilter);
 // }
 
-void MainWindow::connectUploadFile() {
-    connect(uploadFile, &QPushButton::clicked, this, &MainWindow::onUploadFile);
-}
+// void MainWindow::connectUploadFile() {
+//     connect(uploadFile, &QPushButton::clicked, this, &MainWindow::onUploadFile);
+// }
 
-void MainWindow::connectSaveImage() {
-    connect(saveImage, &QPushButton::clicked, this, &MainWindow::onSaveImage);
-}
+// void MainWindow::connectSaveImage() {
+//     connect(saveImage, &QPushButton::clicked, this, &MainWindow::onSaveImage);
+// }
 
 void MainWindow::connectParam1() {
     connect(p1Slider, &QSlider::valueChanged, this, &MainWindow::onValChangeP1);
@@ -439,48 +439,48 @@ void MainWindow::connectColorGrade() {
 //     realtime->settingsChanged();
 // }
 
-void MainWindow::onUploadFile() {
-    // Get abs path of scene file
-    QString configFilePath = QFileDialog::getOpenFileName(this, tr("Upload File"),
-                                                          QDir::currentPath()
-                                                              .append(QDir::separator())
-                                                              .append("scenefiles")
-                                                              .append(QDir::separator())
-                                                              .append("realtime")
-                                                              .append(QDir::separator())
-                                                              .append("required"), tr("Scene Files (*.json)"));
-    if (configFilePath.isNull()) {
-        std::cout << "Failed to load null scenefile." << std::endl;
-        return;
-    }
+// void MainWindow::onUploadFile() {
+//     // Get abs path of scene file
+//     QString configFilePath = QFileDialog::getOpenFileName(this, tr("Upload File"),
+//                                                           QDir::currentPath()
+//                                                               .append(QDir::separator())
+//                                                               .append("scenefiles")
+//                                                               .append(QDir::separator())
+//                                                               .append("realtime")
+//                                                               .append(QDir::separator())
+//                                                               .append("required"), tr("Scene Files (*.json)"));
+//     if (configFilePath.isNull()) {
+//         std::cout << "Failed to load null scenefile." << std::endl;
+//         return;
+//     }
 
-    settings.sceneFilePath = configFilePath.toStdString();
+//     settings.sceneFilePath = configFilePath.toStdString();
 
-    std::cout << "Loaded scenefile: \"" << configFilePath.toStdString() << "\"." << std::endl;
+//     std::cout << "Loaded scenefile: \"" << configFilePath.toStdString() << "\"." << std::endl;
 
-    realtime->sceneChanged();
-}
+//     realtime->sceneChanged();
+// }
 
-void MainWindow::onSaveImage() {
-    if (settings.sceneFilePath.empty()) {
-        std::cout << "No scene file loaded." << std::endl;
-        return;
-    }
-    std::string sceneName = settings.sceneFilePath.substr(0, settings.sceneFilePath.find_last_of("."));
-    sceneName = sceneName.substr(sceneName.find_last_of("/")+1);
-    QString filePath = QFileDialog::getSaveFileName(this, tr("Save Image"),
-                                                    QDir::currentPath()
-                                                        .append(QDir::separator())
-                                                        .append("student_outputs")
-                                                        .append(QDir::separator())
-                                                        .append("realtime")
-                                                        .append(QDir::separator())
-                                                        .append("required")
-                                                        .append(QDir::separator())
-                                                        .append(sceneName), tr("Image Files (*.png)"));
-    std::cout << "Saving image to: \"" << filePath.toStdString() << "\"." << std::endl;
-    realtime->saveViewportImage(filePath.toStdString());
-}
+// void MainWindow::onSaveImage() {
+//     if (settings.sceneFilePath.empty()) {
+//         std::cout << "No scene file loaded." << std::endl;
+//         return;
+//     }
+//     std::string sceneName = settings.sceneFilePath.substr(0, settings.sceneFilePath.find_last_of("."));
+//     sceneName = sceneName.substr(sceneName.find_last_of("/")+1);
+//     QString filePath = QFileDialog::getSaveFileName(this, tr("Save Image"),
+//                                                     QDir::currentPath()
+//                                                         .append(QDir::separator())
+//                                                         .append("student_outputs")
+//                                                         .append(QDir::separator())
+//                                                         .append("realtime")
+//                                                         .append(QDir::separator())
+//                                                         .append("required")
+//                                                         .append(QDir::separator())
+//                                                         .append(sceneName), tr("Image Files (*.png)"));
+//     std::cout << "Saving image to: \"" << filePath.toStdString() << "\"." << std::endl;
+//     realtime->saveViewportImage(filePath.toStdString());
+// }
 
 void MainWindow::onValChangeP1(int newValue) {
     p1Slider->setValue(newValue);
