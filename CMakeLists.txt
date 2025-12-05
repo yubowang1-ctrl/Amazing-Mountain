@@ -44,6 +44,8 @@ add_executable(${PROJECT_NAME}
     src/utils/scenefilereader.h
     src/utils/sceneparser.h
     src/utils/shaderloader.h
+    src/utils/bezier.h
+    src/utils/camera_path.h
     src/shapes/Cube.h
     src/utils/aspectratiowidget/aspectratiowidget.hpp
     src/shapes/Cone.h

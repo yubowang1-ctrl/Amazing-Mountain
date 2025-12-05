@@ -23,6 +23,7 @@
 #include "terrain/terraingenerator.h"
 #include "vegetation/lsystem_tree.h"
 #include "particles/particlesystem.h"
+#include "utils/camera_path.h"
 
 class Realtime : public QOpenGLWidget
 {
@@ -48,6 +49,11 @@ private:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void timerEvent(QTimerEvent *event) override;
+
+    // Camera Path
+    CameraPath m_cameraPath;
+    QElapsedTimer m_pathTimer;
+    bool m_isPathAnimating = false;
 
     // Tick Related Variables
     int m_timer;                  // Stores timer which attempts to run ~60 times per second

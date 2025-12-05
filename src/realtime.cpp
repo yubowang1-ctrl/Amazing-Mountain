@@ -426,7 +426,7 @@ GLuint Realtime::loadTexture2D(const QString &path, bool srgb)
         return 0;
     }
 
-    img = img.convertToFormat(QImage::Format_RGBA8888).mirrored(); // OpenGL: origin left-bottom corner
+    img = img.convertToFormat(QImage::Format_RGBA8888).flipped(Qt::Vertical); // OpenGL: origin left-bottom corner
 
     GLuint tex = 0;
     glGenTextures(1, &tex);
@@ -1120,6 +1120,19 @@ void Realtime::initializeGL()
     m_particleSystem = new ParticleSystem();
     m_particleSystem->init();
 
+    // --- Camera Path Initialization ---
+    // Define a simple circular path around the center
+    // Keyframe 0: Start
+    m_cameraPath.addKeyframe(glm::vec3(0, 10, 20), glm::quat(glm::vec3(glm::radians(-20.f), 0, 0)), 0.0f);
+    // Keyframe 1: Left side
+    m_cameraPath.addKeyframe(glm::vec3(-20, 15, 0), glm::quat(glm::vec3(glm::radians(-15.f), glm::radians(-90.f), 0)), 5.0f);
+    // Keyframe 2: Back
+    m_cameraPath.addKeyframe(glm::vec3(0, 20, -20), glm::quat(glm::vec3(glm::radians(-25.f), glm::radians(-180.f), 0)), 10.0f);
+    // Keyframe 3: Right side
+    m_cameraPath.addKeyframe(glm::vec3(20, 15, 0), glm::quat(glm::vec3(glm::radians(-15.f), glm::radians(-270.f), 0)), 15.0f);
+    // Keyframe 4: Return to start
+    m_cameraPath.addKeyframe(glm::vec3(0, 10, 20), glm::quat(glm::vec3(glm::radians(-20.f), glm::radians(-360.f), 0)), 20.0f);
+
     m_glInitialized = true;
 
     // post-processing setup
@@ -1398,6 +1411,14 @@ void Realtime::settingsChanged()
 
 void Realtime::keyPressEvent(QKeyEvent *event)
 {
+    if (event->key() == Qt::Key_P)
+    {
+        m_isPathAnimating = !m_isPathAnimating;
+        if (m_isPathAnimating)
+        {
+            m_pathTimer.start();
+        }
+    }
     m_keyMap[Qt::Key(event->key())] = true;
 }
 
@@ -1464,6 +1485,21 @@ void Realtime::timerEvent(QTimerEvent *event)
     dt = std::min(dt, 0.1f);
 
     m_time += dt; // water animation time var.
+
+    if (m_isPathAnimating)
+    {
+        float t = m_pathTimer.elapsed() / 1000.0f;
+        // Loop every 20 seconds
+        t = fmod(t, 20.0f);
+
+        CameraPath::Pose pose = m_cameraPath.evaluate(t);
+        m_cam.eye = pose.position;
+        m_cam.look = pose.rotation * glm::vec3(0, 0, -1);
+        m_cam.up = pose.rotation * glm::vec3(0, 1, 0);
+
+        update();
+        return; // Skip manual control
+    }
 
     // Target speed: 5 world-space units per second (spec requirement)
     const float speed = 5.0f;
