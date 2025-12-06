@@ -25,6 +25,7 @@ private:
     void connectParam4();
     void connectParam5();
     void connectParam6();
+    void connectParam7();
     void connectNear();
     void connectFar();
 
@@ -52,12 +53,14 @@ private:
     QSlider *p4Slider;
     QSlider *p5Slider;
     QSlider *p6Slider;
+    QSlider *p7Slider;
     QSpinBox *p1Box;
     QSpinBox *p2Box;
     QSpinBox *p3Box;
     QSpinBox *p4Box;
     QSpinBox *p5Box;
     QSpinBox *p6Box;
+    QSpinBox *p7Box;
     QSlider *nearSlider;
     QSlider *farSlider;
     QDoubleSpinBox *nearBox;
@@ -70,7 +73,7 @@ private:
     QCheckBox *ec4;
 
     QCheckBox *checkBoxColdBlue = nullptr;
-    QCheckBox *checkBoxRainy    = nullptr;
+    QCheckBox *checkBoxRainy = nullptr;
 
 private slots:
     // From old Project 6
@@ -85,6 +88,7 @@ private slots:
     void onValChangeP4(int newValue);
     void onValChangeP5(int newValue);
     void onValChangeP6(int newValue);
+    void onValChangeP7(int newValue);
     void onValChangeNearSlider(int newValue);
     void onValChangeFarSlider(int newValue);
     void onValChangeNearBox(double newValue);

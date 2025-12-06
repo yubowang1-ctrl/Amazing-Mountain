@@ -3,7 +3,8 @@
 
 #include <string>
 
-struct Settings {
+struct Settings
+{
     std::string sceneFilePath;
     int shapeParameter1 = 1;
     int shapeParameter2 = 1;
@@ -11,6 +12,7 @@ struct Settings {
     int shapeParameter4 = 1; // forest coverage
     int shapeParameter5 = 1; // trees per cluster
     int shapeParameter6 = 1; // leaf density
+    int shapeParameter7 = 1; // rock density
     float nearPlane = 1;
     float farPlane = 1;
     bool perPixelFilter = false;
@@ -24,7 +26,6 @@ struct Settings {
     // 0 = off, 1 = cold blue, 3 = rainy / overcast
     int colorGradePreset = 0;
 };
-
 
 // The global Settings object, will be initialized by MainWindow
 extern Settings settings;

@@ -65,6 +65,8 @@ void MainWindow::initialize()
     param5_label->setText("Trees per cluster (EC4 on):");
     QLabel *param6_label = new QLabel();
     param6_label->setText("Leaf density (EC4 on):");
+    QLabel *param7_label = new QLabel();
+    param7_label->setText("Rock Density:");
     QLabel *near_label = new QLabel(); // Near plane label
     near_label->setText("Near Plane:");
     QLabel *far_label = new QLabel(); // Far plane label
@@ -113,6 +115,8 @@ void MainWindow::initialize()
     QHBoxLayout *l5 = new QHBoxLayout();
     QGroupBox *p6Layout = new QGroupBox(); // leaf density
     QHBoxLayout *l6 = new QHBoxLayout();
+    QGroupBox *p7Layout = new QGroupBox(); // rock density
+    QHBoxLayout *l7 = new QHBoxLayout();
 
     // Create slider controls to control parameters
     p1Slider = new QSlider(Qt::Orientation::Horizontal); // Parameter 1 slider
@@ -191,6 +195,19 @@ void MainWindow::initialize()
     p6Box->setSingleStep(1);
     p6Box->setValue(12);
 
+    // === Rock density ===
+    p7Slider = new QSlider(Qt::Horizontal);
+    p7Slider->setTickInterval(1);
+    p7Slider->setMinimum(1);
+    p7Slider->setMaximum(100);
+    p7Slider->setValue(25);
+
+    p7Box = new QSpinBox();
+    p7Box->setMinimum(1);
+    p7Box->setMaximum(100);
+    p7Box->setSingleStep(1);
+    p7Box->setValue(25);
+
     // Adds the slider and number box to the parameter layouts
     l1->addWidget(p1Slider);
     l1->addWidget(p1Box);
@@ -215,6 +232,10 @@ void MainWindow::initialize()
     l6->addWidget(p6Slider);
     l6->addWidget(p6Box);
     p6Layout->setLayout(l6);
+
+    l7->addWidget(p7Slider);
+    l7->addWidget(p7Box);
+    p7Layout->setLayout(l7);
 
     // Creates the boxes containing the camera sliders and number boxes
     QGroupBox *nearLayout = new QGroupBox(); // horizonal near slider alignment
@@ -288,6 +309,8 @@ void MainWindow::initialize()
     vLayout->addWidget(p5Layout);
     vLayout->addWidget(param6_label);
     vLayout->addWidget(p6Layout);
+    vLayout->addWidget(param7_label);
+    vLayout->addWidget(p7Layout);
     vLayout->addWidget(camera_label);
     vLayout->addWidget(near_label);
     vLayout->addWidget(nearLayout);
@@ -326,6 +349,7 @@ void MainWindow::initialize()
     onValChangeP4(1);
     onValChangeP5(1);
     onValChangeP6(1);
+    onValChangeP7(1);
 
     // Set default values for near and far planes
     onValChangeNearBox(0.1f);
@@ -351,6 +375,7 @@ void MainWindow::connectUIElements()
     connectParam4();
     connectParam5();
     connectParam6();
+    connectParam7();
     connectNear();
     connectFar();
     connectExtraCredit();
@@ -417,6 +442,14 @@ void MainWindow::connectParam6()
             this, &MainWindow::onValChangeP6);
     connect(p6Box, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             this, &MainWindow::onValChangeP6);
+}
+
+void MainWindow::connectParam7()
+{
+    connect(p7Slider, &QSlider::valueChanged,
+            this, &MainWindow::onValChangeP7);
+    connect(p7Box, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+            this, &MainWindow::onValChangeP7);
 }
 
 void MainWindow::connectNear()
@@ -553,6 +586,14 @@ void MainWindow::onValChangeP6(int newValue)
     p6Slider->setValue(newValue);
     p6Box->setValue(newValue);
     settings.shapeParameter6 = p6Slider->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeP7(int newValue)
+{
+    p7Slider->setValue(newValue);
+    p7Box->setValue(newValue);
+    settings.shapeParameter7 = p7Slider->value();
     realtime->settingsChanged();
 }
 

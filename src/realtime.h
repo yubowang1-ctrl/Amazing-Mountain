@@ -172,8 +172,8 @@ private:
     GLMesh m_waterMesh;
     GLuint m_progWater = 0;
     GLuint m_texWaterNormal = 0;
-    float  m_time           = 0.f; // time used for rolling UV
-    float  WATER_HEIGHT     = 0.f;
+    float m_time = 0.f; // time used for rolling UV
+    float WATER_HEIGHT = 0.f;
 
     GLuint m_reflectionFBO;
     GLuint m_reflectionFBO_texture;
@@ -182,13 +182,13 @@ private:
     GLuint m_refractionFBO;
     GLuint m_refractionFBO_texture;
     GLuint m_refractionFBO_renderbuffer;
-    GLuint m_refractionDepthTexture;  // Depth texture for refraction FBO
+    GLuint m_refractionDepthTexture; // Depth texture for refraction FBO
     int m_fbo_width;
     int m_fbo_height;
 
     // Water textures
-    GLuint m_normalMapTexture;    // Normal map texture for water
-    GLuint m_waterDUDVTexture;    // DUDV map texture for water
+    GLuint m_normalMapTexture; // Normal map texture for water
+    GLuint m_waterDUDVTexture; // DUDV map texture for water
 
     // skybox
     GLMesh *m_skyCube = nullptr;
@@ -198,15 +198,21 @@ private:
     GLuint m_progForest = 0;
     GLMesh *m_treeCylinderMesh = nullptr; // shared cylinder geometry (from mesh cache)
     GLMesh *m_leafMesh = nullptr;
+    GLMesh *m_rockMesh = nullptr;
     bool m_drawForest = false;
     std::vector<BranchInstance> m_forestBranches; // all branch instances (including all trees)
     std::vector<glm::mat4> m_forestLeaves;
+    std::vector<glm::mat4> m_rocks;
+
+    GLuint m_texRockObjAlbedo = 0; // Rock texture
 
     // specs for branch / leave instance rendering
     GLuint m_branchInstanceVBO = 0;
     GLuint m_leafInstanceVBO = 0;
+    GLuint m_rockInstanceVBO = 0;
     GLsizei m_branchInstanceCount = 0;
     GLsizei m_leafInstanceCount = 0;
+    GLsizei m_rockInstanceCount = 0;
 
     // --- Post-processing / FBO ---
     GLuint m_fboScene = 0;
@@ -243,6 +249,7 @@ private:
     GLMesh *getOrCreateMesh(PrimitiveType type, int p1, int p2);
 
     void buildForest(); // Generate/Rebuild Forest
+    void buildRocks();  // Generate/Rebuild Rocks
 
     GLuint loadTexture2D(const QString &path, bool srgb = false);
 
@@ -254,12 +261,9 @@ private:
     void createScreenQuad(); // create [-1,1]^2 full-screen triangular grid
     void renderScene();
 
-
     glm::mat4 createMirroredViewMatrix(float waterHeight);
-    void renderSceneObject(const glm::mat4& viewMatrix);
+    void renderSceneObject(const glm::mat4 &viewMatrix);
     void renderReflection();
     void renderRefraction();
     void renderWater();
-
-
 };

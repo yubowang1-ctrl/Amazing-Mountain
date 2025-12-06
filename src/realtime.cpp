@@ -417,6 +417,106 @@ void Realtime::buildForest()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
+void Realtime::buildRocks()
+{
+    m_rocks.clear();
+
+    if (!m_rockMesh)
+        return;
+
+    std::mt19937 rng(5678); // Different seed
+    std::uniform_real_distribution<float> dist01(0.f, 1.f);
+
+    // Rock parameters
+    // Map slider (1-100) to rock count (e.g., 10 to 1000)
+    int rockCount = settings.shapeParameter7 * 10;
+    float seaHeightWorld = m_terrainParams.seaLevel;
+    float heightScale = m_terrainParams.heightScale;
+
+    auto clamp01 = [](float v)
+    { return glm::clamp(v, 0.f, 1.f); };
+
+    for (int i = 0; i < rockCount; ++i)
+    {
+        glm::vec2 uv(dist01(rng), dist01(rng));
+        glm::vec3 surfLocal = m_terrainGen.sampleSurfacePos(uv.x, uv.y);
+        glm::vec3 pWorld = glm::vec3(m_terrainModel * glm::vec4(surfLocal, 1.f));
+
+        // Don't place rocks underwater (or maybe some near the shore)
+        if (pWorld.y <= seaHeightWorld - 0.05f)
+            continue;
+
+        // Calculate slope
+        auto sampleHeightWorld = [&](float u, float v)
+        {
+            glm::vec2 uvc(clamp01(u), clamp01(v));
+            glm::vec3 pL = m_terrainGen.sampleSurfacePos(uvc.x, uvc.y);
+            glm::vec3 pW = glm::vec3(m_terrainModel * glm::vec4(pL, 1.f));
+            return pW.y;
+        };
+
+        const float eps = 1.0f / 512.0f;
+        float h0 = pWorld.y;
+        float hdx = sampleHeightWorld(uv.x + eps, uv.y);
+        float hdy = sampleHeightWorld(uv.x, uv.y + eps);
+
+        glm::vec3 dx = glm::vec3(eps, hdx - h0, 0.f);
+        glm::vec3 dz = glm::vec3(0.f, hdy - h0, eps);
+        glm::vec3 nWorld = glm::normalize(glm::cross(dz, dx));
+
+        float slope = glm::clamp(1.0f - glm::dot(nWorld, glm::vec3(0, 1, 0)), 0.0f, 1.0f);
+
+        // Place rocks on beaches or slopes, but not too steep
+        bool isBeach = (pWorld.y < seaHeightWorld + 0.1f * heightScale);
+        bool isSlope = (slope > 0.3f && slope < 0.8f);
+
+        if (!isBeach && !isSlope)
+        {
+            // Randomly place some on flat ground too, but fewer
+            if (dist01(rng) > 0.1f)
+                continue;
+        }
+
+        // Transform
+        float scaleBase = 0.5f + 1.5f * dist01(rng); // Random size
+        glm::vec3 scale(scaleBase);
+
+        // Deform slightly to look like a rock
+        scale.x *= 0.8f + 0.4f * dist01(rng);
+        scale.y *= 0.6f + 0.4f * dist01(rng); // Flatter
+        scale.z *= 0.8f + 0.4f * dist01(rng);
+
+        float yaw = 2.f * float(M_PI) * dist01(rng);
+        float pitch = 2.f * float(M_PI) * dist01(rng);
+        float roll = 2.f * float(M_PI) * dist01(rng);
+
+        glm::mat4 T = glm::translate(glm::mat4(1.f), pWorld);
+        glm::mat4 R = glm::rotate(glm::mat4(1.f), yaw, glm::vec3(0, 1, 0));
+        R = glm::rotate(R, pitch, glm::vec3(1, 0, 0));
+        R = glm::rotate(R, roll, glm::vec3(0, 0, 1));
+        glm::mat4 S = glm::scale(glm::mat4(1.f), scale);
+
+        // Sink the rock slightly into the ground
+        T = glm::translate(T, glm::vec3(0, -0.2f * scale.y, 0));
+
+        m_rocks.push_back(T * R * S);
+    }
+
+    std::cout << "[buildRocks] rocks=" << m_rocks.size() << "\n";
+
+    // Upload to VBO
+    m_rockInstanceCount = static_cast<GLsizei>(m_rocks.size());
+    if (!m_rocks.empty())
+    {
+        glBindBuffer(GL_ARRAY_BUFFER, m_rockInstanceVBO);
+        glBufferData(GL_ARRAY_BUFFER,
+                     m_rocks.size() * sizeof(glm::mat4),
+                     m_rocks.data(),
+                     GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+}
+
 GLuint Realtime::loadTexture2D(const QString &path, bool srgb)
 {
     QImage img(path);
@@ -560,8 +660,8 @@ void Realtime::createScreenQuad()
     m_screenQuad.uploadinterleavedPNC(verts);
 }
 
-
-glm::mat4 Realtime::createMirroredViewMatrix(float waterHeight) {
+glm::mat4 Realtime::createMirroredViewMatrix(float waterHeight)
+{
     // Mirror camera position about waterHeight
     glm::vec3 mirroredCamPos = m_cam.eye;
     mirroredCamPos.y = 2.0f * waterHeight - m_cam.eye.y;
@@ -578,20 +678,18 @@ glm::mat4 Realtime::createMirroredViewMatrix(float waterHeight) {
         u.x, v.x, w.x, 0.0f,
         u.y, v.y, w.y, 0.0f,
         u.z, v.z, w.z, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f
-        );
+        0.0f, 0.0f, 0.0f, 1.0f);
     glm::mat4 Translate(
         1.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 1.0f, 0.0f,
-        -mirroredCamPos.x, -mirroredCamPos.y, -mirroredCamPos.z, 1.0f
-        );
+        -mirroredCamPos.x, -mirroredCamPos.y, -mirroredCamPos.z, 1.0f);
 
     return Rotate * Translate;
 }
 
-
-void Realtime::renderScene(){
+void Realtime::renderScene()
+{
 
     // global sun/ambient definition
     glm::vec3 sunDir = glm::normalize(glm::vec3(0.3f, -1.0f, 0.2f));
@@ -738,7 +836,6 @@ void Realtime::renderScene(){
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
-
     // forest: use instance rendering shader
     if (m_drawForest && m_treeCylinderMesh && m_branchInstanceCount > 0)
     {
@@ -788,6 +885,21 @@ void Realtime::renderScene(){
 
             m_leafMesh->drawInstanced(m_leafInstanceCount);
         }
+
+        // then, draw the rocks (gray texture)
+        if (m_rockMesh && m_rockInstanceCount > 0)
+        {
+            glm::vec3 rockKa(0.1f, 0.1f, 0.1f);
+            glm::vec3 rockKd(0.4f, 0.4f, 0.4f);
+            glm::vec3 rockKs(0.1f);
+
+            glUniform3fv(glGetUniformLocation(m_progForest, "u_mat.ka"), 1, &rockKa[0]);
+            glUniform3fv(glGetUniformLocation(m_progForest, "u_mat.kd"), 1, &rockKd[0]);
+            glUniform3fv(glGetUniformLocation(m_progForest, "u_mat.ks"), 1, &rockKs[0]);
+            glUniform1f(glGetUniformLocation(m_progForest, "u_mat.shininess"), 10.f);
+
+            m_rockMesh->drawInstanced(m_rockInstanceCount);
+        }
     }
 
     // Draw Particles
@@ -798,18 +910,20 @@ void Realtime::renderScene(){
 }
 
 //
-void Realtime::renderSceneObject(const glm::mat4& viewMatrix){
+void Realtime::renderSceneObject(const glm::mat4 &viewMatrix)
+{
     // global sun/ambient definition
-    glm::vec3 sunDir   = glm::normalize(glm::vec3(0.3f, -1.0f, 0.2f));
+    glm::vec3 sunDir = glm::normalize(glm::vec3(0.3f, -1.0f, 0.2f));
     glm::vec3 sunColor = glm::vec3(2.5f);
-    glm::vec3 ambColor = glm::vec3(0.35f);  // unified ambient light of "skylight + ground reflection"
+    glm::vec3 ambColor = glm::vec3(0.35f); // unified ambient light of "skylight + ground reflection"
 
     // sky color + fog density
     glm::vec3 fogColor(0.55f, 0.70f, 0.90f); // FIXME: can be set similar to color of the sky and horizon.
     float fogDensity = 0.02f;                // 0.01 to 0.03
 
     // skybox
-    if (m_progSky && m_skyCube) {
+    if (m_progSky && m_skyCube)
+    {
         glDepthMask(GL_FALSE); // not specify depth, just draw the background
 
         // turn off backface culling for "back face" rendering
@@ -817,7 +931,8 @@ void Realtime::renderSceneObject(const glm::mat4& viewMatrix){
 
         glUseProgram(m_progSky);
 
-        auto setSkyMat4 = [&](const char* name, const glm::mat4 &M){
+        auto setSkyMat4 = [&](const char *name, const glm::mat4 &M)
+        {
             glUniformMatrix4fv(glGetUniformLocation(m_progSky, name), 1, GL_FALSE, &M[0][0]);
         };
 
@@ -825,16 +940,16 @@ void Realtime::renderSceneObject(const glm::mat4& viewMatrix){
         setSkyMat4("uView", viewNoTrans);
         setSkyMat4("uProj", m_cam.proj());
 
-        glUniform3fv(glGetUniformLocation(m_progSky, "uSunDir"),   1, &sunDir[0]);
+        glUniform3fv(glGetUniformLocation(m_progSky, "uSunDir"), 1, &sunDir[0]);
         glUniform3fv(glGetUniformLocation(m_progSky, "uSunColor"), 1, &sunColor[0]);
 
         glm::vec3 skyTop(0.04f, 0.23f, 0.48f);
         glm::vec3 skyHori(0.42f, 0.60f, 0.85f);
         glm::vec3 skyBottom(0.75f, 0.65f, 0.55f);
 
-        glUniform3fv(glGetUniformLocation(m_progSky, "uSkyTopColor"),     1, &skyTop[0]);
+        glUniform3fv(glGetUniformLocation(m_progSky, "uSkyTopColor"), 1, &skyTop[0]);
         glUniform3fv(glGetUniformLocation(m_progSky, "uSkyHorizonColor"), 1, &skyHori[0]);
-        glUniform3fv(glGetUniformLocation(m_progSky, "uSkyBottomColor"),  1, &skyBottom[0]);
+        glUniform3fv(glGetUniformLocation(m_progSky, "uSkyBottomColor"), 1, &skyBottom[0]);
 
         m_skyCube->draw();
 
@@ -843,17 +958,19 @@ void Realtime::renderSceneObject(const glm::mat4& viewMatrix){
     }
 
     // terrain
-    if (m_hasTerrain && m_progTerrain) {
+    if (m_hasTerrain && m_progTerrain)
+    {
         glPolygonMode(GL_FRONT_AND_BACK, m_terrainWire ? GL_LINE : GL_FILL);
 
         glUseProgram(m_progTerrain);
 
-        auto set4 = [&](const char *n, const glm::mat4 &M){
+        auto set4 = [&](const char *n, const glm::mat4 &M)
+        {
             glUniformMatrix4fv(glGetUniformLocation(m_progTerrain, n),
                                1, GL_FALSE, &M[0][0]);
         };
-        set4("uProj",  m_cam.proj());
-        set4("uView",  viewMatrix);
+        set4("uProj", m_cam.proj());
+        set4("uView", viewMatrix);
         set4("uModel", m_terrainModel);
         glUniform1i(glGetUniformLocation(m_progTerrain, "wireshade"),
                     m_terrainWire ? 1 : 0);
@@ -861,14 +978,14 @@ void Realtime::renderSceneObject(const glm::mat4& viewMatrix){
         // Lighting & Height Parameters
         glUniform3fv(glGetUniformLocation(m_progTerrain, "uEye"), 1, &m_cam.eye[0]);
 
-        glUniform3fv(glGetUniformLocation(m_progTerrain, "uSunDir"),       1, &sunDir[0]);
-        glUniform3fv(glGetUniformLocation(m_progTerrain, "uSunColor"),     1, &sunColor[0]);
+        glUniform3fv(glGetUniformLocation(m_progTerrain, "uSunDir"), 1, &sunDir[0]);
+        glUniform3fv(glGetUniformLocation(m_progTerrain, "uSunColor"), 1, &sunColor[0]);
         glUniform3fv(glGetUniformLocation(m_progTerrain, "uAmbientColor"), 1, &ambColor[0]);
 
-        glUniform3fv(glGetUniformLocation(m_progTerrain, "uFogColor"),   1, &fogColor[0]);
-        glUniform1f (glGetUniformLocation(m_progTerrain, "uFogDensity"),    fogDensity);
+        glUniform3fv(glGetUniformLocation(m_progTerrain, "uFogColor"), 1, &fogColor[0]);
+        glUniform1f(glGetUniformLocation(m_progTerrain, "uFogDensity"), fogDensity);
 
-        glUniform1f(glGetUniformLocation(m_progTerrain, "uSeaHeight"),   m_seaHeightWorld);
+        glUniform1f(glGetUniformLocation(m_progTerrain, "uSeaHeight"), m_seaHeightWorld);
         glUniform1f(glGetUniformLocation(m_progTerrain, "uHeightScale"), m_heightScaleWorld);
 
         // normal intentisty
@@ -940,10 +1057,12 @@ void Realtime::renderSceneObject(const glm::mat4& viewMatrix){
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
     // forest: use instance rendering shader
-    if (m_drawForest && m_treeCylinderMesh && m_branchInstanceCount > 0) {
+    if (m_drawForest && m_treeCylinderMesh && m_branchInstanceCount > 0)
+    {
         glUseProgram(m_progForest);
 
-        auto setMat4 = [&](const char* name, const glm::mat4& M){
+        auto setMat4 = [&](const char *name, const glm::mat4 &M)
+        {
             glUniformMatrix4fv(glGetUniformLocation(m_progForest, name),
                                1, GL_FALSE, &M[0][0]);
         };
@@ -953,42 +1072,69 @@ void Realtime::renderSceneObject(const glm::mat4& viewMatrix){
         glUniform3fv(glGetUniformLocation(m_progForest, "uEye"), 1, &m_cam.eye[0]);
 
         // sunlight / ambientlLight / fog
-        glUniform3fv(glGetUniformLocation(m_progForest,"uSunDir"),      1, &sunDir[0]);
-        glUniform3fv(glGetUniformLocation(m_progForest,"uSunColor"),    1, &sunColor[0]);
-        glUniform3fv(glGetUniformLocation(m_progForest,"uAmbientColor"),1, &ambColor[0]);
-        glUniform3fv(glGetUniformLocation(m_progForest,"uFogColor"),    1, &fogColor[0]);
-        glUniform1f(glGetUniformLocation(m_progForest,"uFogDensity"),      fogDensity);
+        glUniform3fv(glGetUniformLocation(m_progForest, "uSunDir"), 1, &sunDir[0]);
+        glUniform3fv(glGetUniformLocation(m_progForest, "uSunColor"), 1, &sunColor[0]);
+        glUniform3fv(glGetUniformLocation(m_progForest, "uAmbientColor"), 1, &ambColor[0]);
+        glUniform3fv(glGetUniformLocation(m_progForest, "uFogColor"), 1, &fogColor[0]);
+        glUniform1f(glGetUniformLocation(m_progForest, "uFogDensity"), fogDensity);
 
         // first, draw the tree branches (brown texture)
         glm::vec3 barkKa(0.1f, 0.08f, 0.05f);
         glm::vec3 barkKd(0.3f, 0.22f, 0.15f);
         glm::vec3 barkKs(0.02f);
 
-        glUniform3fv(glGetUniformLocation(m_progForest,"u_mat.ka"), 1, &barkKa[0]);
-        glUniform3fv(glGetUniformLocation(m_progForest,"u_mat.kd"), 1, &barkKd[0]);
-        glUniform3fv(glGetUniformLocation(m_progForest,"u_mat.ks"), 1, &barkKs[0]);
-        glUniform1f(glGetUniformLocation(m_progForest,"u_mat.shininess"), 12.f);
+        glUniform3fv(glGetUniformLocation(m_progForest, "u_mat.ka"), 1, &barkKa[0]);
+        glUniform3fv(glGetUniformLocation(m_progForest, "u_mat.kd"), 1, &barkKd[0]);
+        glUniform3fv(glGetUniformLocation(m_progForest, "u_mat.ks"), 1, &barkKs[0]);
+        glUniform1f(glGetUniformLocation(m_progForest, "u_mat.shininess"), 12.f);
 
         m_treeCylinderMesh->drawInstanced(m_branchInstanceCount);
 
         // then, draw the leaves (green texture)
-        if (m_leafMesh && m_leafInstanceCount > 0) {
+        if (m_leafMesh && m_leafInstanceCount > 0)
+        {
             glm::vec3 leafKa(0.05f, 0.10f, 0.05f);
-            glm::vec3 leafKd(0.20f, 0.70f, 0.25f);;
+            glm::vec3 leafKd(0.20f, 0.70f, 0.25f);
+            ;
             glm::vec3 leafKs(0.03f);
 
-            glUniform3fv(glGetUniformLocation(m_progForest,"u_mat.ka"), 1, &leafKa[0]);
-            glUniform3fv(glGetUniformLocation(m_progForest,"u_mat.kd"), 1, &leafKd[0]);
-            glUniform3fv(glGetUniformLocation(m_progForest,"u_mat.ks"), 1, &leafKs[0]);
-            glUniform1f(glGetUniformLocation(m_progForest,"u_mat.shininess"), 10.f);
+            glUniform3fv(glGetUniformLocation(m_progForest, "u_mat.ka"), 1, &leafKa[0]);
+            glUniform3fv(glGetUniformLocation(m_progForest, "u_mat.kd"), 1, &leafKd[0]);
+            glUniform3fv(glGetUniformLocation(m_progForest, "u_mat.ks"), 1, &leafKs[0]);
+            glUniform1f(glGetUniformLocation(m_progForest, "u_mat.shininess"), 10.f);
 
             m_leafMesh->drawInstanced(m_leafInstanceCount);
+        }
+
+        // then, draw the rocks (gray texture)
+        if (m_rockMesh && m_rockInstanceCount > 0)
+        {
+            glm::vec3 rockKa(0.1f, 0.1f, 0.1f);
+            glm::vec3 rockKd(0.4f, 0.4f, 0.4f);
+            glm::vec3 rockKs(0.1f);
+
+            glUniform3fv(glGetUniformLocation(m_progForest, "u_mat.ka"), 1, &rockKa[0]);
+            glUniform3fv(glGetUniformLocation(m_progForest, "u_mat.kd"), 1, &rockKd[0]);
+            glUniform3fv(glGetUniformLocation(m_progForest, "u_mat.ks"), 1, &rockKs[0]);
+            glUniform1f(glGetUniformLocation(m_progForest, "u_mat.shininess"), 10.f);
+
+            // Bind texture
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, m_texRockObjAlbedo);
+            glUniform1i(glGetUniformLocation(m_progForest, "uTexture"), 0);
+            glUniform1i(glGetUniformLocation(m_progForest, "uUseTexture"), 1);
+
+            m_rockMesh->drawInstanced(m_rockInstanceCount);
+
+            // Reset
+            glUniform1i(glGetUniformLocation(m_progForest, "uUseTexture"), 0);
         }
     }
 }
 
 // Reflection: Render scene above water to m_reflectionFBO
-void Realtime::renderReflection() {
+void Realtime::renderReflection()
+{
     glBindFramebuffer(GL_FRAMEBUFFER, m_reflectionFBO);
     glViewport(0, 0, m_fbo_width, m_fbo_height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1011,7 +1157,8 @@ void Realtime::renderReflection() {
 }
 
 // Refraction: Render scene below water to m_refractionFBO
-void Realtime::renderRefraction() {
+void Realtime::renderRefraction()
+{
     glBindFramebuffer(GL_FRAMEBUFFER, m_refractionFBO);
     glViewport(0, 0, m_fbo_width, m_fbo_height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1029,14 +1176,16 @@ void Realtime::renderRefraction() {
 }
 
 // Water Part
-void Realtime::renderWater(){
-    if (!m_progWater) return;
+void Realtime::renderWater()
+{
+    if (!m_progWater)
+        return;
 
     // Enable blending for water transparency
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-     // Disable depth writing but keep depth testing for proper occlusion
+    // Disable depth writing but keep depth testing for proper occlusion
     glDepthMask(GL_FALSE);
 
     glUseProgram(m_progWater);
@@ -1082,7 +1231,7 @@ void Realtime::renderWater(){
     // Time factor (for animation)
     glUniform1f(glGetUniformLocation(m_progWater, "u_timeFactor"), m_time);
 
-    glm::vec3 sunDir   = glm::normalize(glm::vec3(0.3f, -1.0f, 0.2f));
+    glm::vec3 sunDir = glm::normalize(glm::vec3(0.3f, -1.0f, 0.2f));
     glm::vec3 sunColor = glm::vec3(2.5f);
 
     // Global data
@@ -1110,11 +1259,16 @@ void Realtime::renderWater(){
     glDisable(GL_BLEND);
 
     // Unbind textures
-    glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, 0);
-    glActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, 0);
-    glActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_2D, 0);
-    glActiveTexture(GL_TEXTURE3); glBindTexture(GL_TEXTURE_2D, 0);
-    glActiveTexture(GL_TEXTURE4); glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 // ================== Rendering the Scene!
@@ -1345,6 +1499,7 @@ void Realtime::initializeGL()
         m_texBeachAlbedo = loadTexture2D(":/resources/textures/terrain/beach/albedo.jpg", false);
         m_texRockHighAlbedo = loadTexture2D(":/resources/textures/terrain/rock/albedo.jpg", false);
         m_texSnowAlbedo = loadTexture2D(":/resources/textures/terrain/snow/albedo.jpg", false);
+        m_texRockObjAlbedo = loadTexture2D("/Users/wangyubodemac/Amazing-Mountain/resources/textures/terrain/rock_beach/displacement.jpg", false);
 
         m_texGrassNormal = loadTexture2D(":/resources/textures/terrain/grass/normal.jpg", false);
         m_texRockNormal = loadTexture2D(":/resources/textures/terrain/rock_beach/normal.jpg", false);
@@ -1377,6 +1532,9 @@ void Realtime::initializeGL()
     // coarse sphere mesh for leaves
     m_leafMesh = getOrCreateMesh(PrimitiveType::PRIMITIVE_SPHERE, 3, 6);
 
+    // rock mesh
+    m_rockMesh = getOrCreateMesh(PrimitiveType::PRIMITIVE_SPHERE, 4, 8);
+
     m_drawForest = false; // off by default, controlled by EC4 checkbox.
 
     // instancing attribute for branches
@@ -1401,6 +1559,21 @@ void Realtime::initializeGL()
     glBindVertexArray(m_leafMesh->vao);
     glGenBuffers(1, &m_leafInstanceVBO);
     glBindBuffer(GL_ARRAY_BUFFER, m_leafInstanceVBO);
+
+    for (int i = 0; i < 4; ++i)
+    {
+        GLuint loc = 2 + i;
+        glEnableVertexAttribArray(loc);
+        glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE,
+                              stride, (void *)(i * vec4Size));
+        glVertexAttribDivisor(loc, 1);
+    }
+    glBindVertexArray(0);
+
+    // instancing attribute for rocks
+    glBindVertexArray(m_rockMesh->vao);
+    glGenBuffers(1, &m_rockInstanceVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_rockInstanceVBO);
 
     for (int i = 0; i < 4; ++i)
     {
@@ -1480,7 +1653,8 @@ void Realtime::initializeGL()
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_reflectionFBO_texture, 0);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_reflectionFBO_renderbuffer);
 
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
         std::cerr << "Error: Reflection FBO is not complete!" << std::endl;
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1511,14 +1685,14 @@ void Realtime::initializeGL()
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_refractionFBO_texture, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_refractionDepthTexture, 0);
 
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
         std::cerr << "Error: Refraction FBO is not complete!" << std::endl;
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     m_texWaterNormal = loadTexture2D(":/resources/textures/normalMap.png", false);
     m_waterDUDVTexture = loadTexture2D(":/resources/textures/waterDUDV.png", false);
-
 }
 
 void Realtime::paintGL()
@@ -1766,10 +1940,13 @@ void Realtime::settingsChanged()
     if (m_drawForest)
     {
         buildForest();
+        buildRocks();
     }
     else
     {
         m_forestBranches.clear();
+        m_rocks.clear();
+        m_rockInstanceCount = 0;
     }
 
     doneCurrent();

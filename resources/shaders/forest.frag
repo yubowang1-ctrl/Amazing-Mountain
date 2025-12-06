@@ -24,6 +24,9 @@ struct Material {
 
 uniform Material u_mat;
 
+uniform sampler2D uTexture;
+uniform int uUseTexture;
+
 void main()
 {
     vec3 N = normalize(v_worldNormal);
@@ -34,8 +37,23 @@ void main()
     vec3 H      = normalize(L + V);
     float spec  = pow(max(dot(N, H), 0.0), u_mat.shininess);
 
-    vec3 ambient  = u_mat.kd * uAmbientColor;
-    vec3 diffuse  = u_mat.kd * NdotL * uSunColor;
+    vec3 albedo = u_mat.kd;
+    if (uUseTexture == 1) {
+        // Triplanar mapping
+        vec3 blend = abs(N);
+        blend /= (blend.x + blend.y + blend.z);
+        
+        float scale = 0.2; // Adjust texture scale
+        vec3 texX = texture(uTexture, v_worldPos.yz * scale).rgb;
+        vec3 texY = texture(uTexture, v_worldPos.xz * scale).rgb;
+        vec3 texZ = texture(uTexture, v_worldPos.xy * scale).rgb;
+        
+        vec3 texColor = texX * blend.x + texY * blend.y + texZ * blend.z;
+        albedo *= texColor;
+    }
+
+    vec3 ambient  = albedo * uAmbientColor;
+    vec3 diffuse  = albedo * NdotL * uSunColor;
     vec3 specular = u_mat.ks * spec    * uSunColor;
 
     vec3 color = ambient + diffuse + specular;
