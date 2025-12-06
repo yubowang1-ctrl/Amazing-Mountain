@@ -560,10 +560,7 @@ void Realtime::createScreenQuad()
     m_screenQuad.uploadinterleavedPNC(verts);
 }
 
-<<<<<<< Updated upstream
-void Realtime::renderScene()
-{
-=======
+
 glm::mat4 Realtime::createMirroredViewMatrix(float waterHeight) {
     // Mirror camera position about waterHeight
     glm::vec3 mirroredCamPos = m_cam.eye;
@@ -595,7 +592,7 @@ glm::mat4 Realtime::createMirroredViewMatrix(float waterHeight) {
 
 
 void Realtime::renderScene(){
->>>>>>> Stashed changes
+
     // global sun/ambient definition
     glm::vec3 sunDir = glm::normalize(glm::vec3(0.3f, -1.0f, 0.2f));
     glm::vec3 sunColor = glm::vec3(2.5f);
@@ -741,63 +738,6 @@ void Realtime::renderScene(){
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
-    // water
-<<<<<<< Updated upstream
-    if (m_progWater && m_texWaterNormal)
-    {
-=======
-    /*
-    if (m_progWater && m_texWaterNormal) {
->>>>>>> Stashed changes
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        glUseProgram(m_progWater);
-
-        auto set4 = [&](const char *n, const glm::mat4 &M)
-        {
-            glUniformMatrix4fv(glGetUniformLocation(m_progWater, n),
-                               1, GL_FALSE, &M[0][0]);
-        };
-        set4("uProj", m_cam.proj());
-        set4("uView", m_cam.view());
-        set4("uModel", m_terrainModel); // same model matrix used in terrain
-
-        glUniform3fv(glGetUniformLocation(m_progWater, "uEye"), 1, &m_cam.eye[0]);
-
-        // Water uses softer lighting for better visual appearance
-        glm::vec3 waterSunColor(1.5f); // intentionally dimmer than terrain
-        glm::vec3 waterAmbient(0.25f); // intentionally darker
-
-        glUniform3fv(glGetUniformLocation(m_progWater, "uSunDir"), 1, &sunDir[0]);
-        glUniform3fv(glGetUniformLocation(m_progWater, "uSunColor"), 1, &waterSunColor[0]);
-        glUniform3fv(glGetUniformLocation(m_progWater, "uAmbientColor"), 1, &waterAmbient[0]);
-
-        // Adjustable: water color and transparency specs
-        glm::vec3 shallow(0.12, 0.4, 0.6);
-        ;
-        glm::vec3 deep(0.02, 0.1, 0.3);
-        glUniform3fv(glGetUniformLocation(m_progWater, "uWaterColorShallow"), 1, &shallow[0]);
-        glUniform3fv(glGetUniformLocation(m_progWater, "uWaterColorDeep"), 1, &deep[0]);
-        glUniform1f(glGetUniformLocation(m_progWater, "uWaterAlpha"), 0.65f);
-
-        // normal scrolling parameters for water "scrolling texture"
-        glUniform1f(glGetUniformLocation(m_progWater, "uTime"), m_time);
-        glUniform1f(glGetUniformLocation(m_progWater, "uTiling"), 3.0f);
-        glUniform1f(glGetUniformLocation(m_progWater, "uScrollSpeed"), 0.05f);
-        glm::vec2 scrollDir(1.0f, 0.3f);
-        glUniform2fv(glGetUniformLocation(m_progWater, "uScrollDir"), 1, &scrollDir[0]);
-        glUniform1f(glGetUniformLocation(m_progWater, "uNormalStrength"), 0.4f);
-
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, m_texWaterNormal);
-        glUniform1i(glGetUniformLocation(m_progWater, "uNormalMap"), 0);
-
-        m_waterMesh.draw();
-
-        glDisable(GL_BLEND);
-    }
-    */
 
     // forest: use instance rendering shader
     if (m_drawForest && m_treeCylinderMesh && m_branchInstanceCount > 0)
@@ -1515,8 +1455,6 @@ void Realtime::initializeGL()
     GLint vp[4];
     glGetIntegerv(GL_VIEWPORT, vp);
     ensureSceneFBO(vp[2], vp[3]);
-<<<<<<< Updated upstream
-=======
 
     // Initialize FBO dimensions
     m_fbo_width = m_sceneWidth * m_devicePixelRatio;
@@ -1581,7 +1519,6 @@ void Realtime::initializeGL()
     m_texWaterNormal = loadTexture2D(":/resources/textures/normalMap.png", false);
     m_waterDUDVTexture = loadTexture2D(":/resources/textures/waterDUDV.png", false);
 
->>>>>>> Stashed changes
 }
 
 void Realtime::paintGL()

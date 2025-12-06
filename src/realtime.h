@@ -172,9 +172,6 @@ private:
     GLMesh m_waterMesh;
     GLuint m_progWater = 0;
     GLuint m_texWaterNormal = 0;
-<<<<<<< Updated upstream
-    float m_time = 0.f; // time used for rolling UV
-=======
     float  m_time           = 0.f; // time used for rolling UV
     float  WATER_HEIGHT     = 0.f;
 
@@ -192,7 +189,6 @@ private:
     // Water textures
     GLuint m_normalMapTexture;    // Normal map texture for water
     GLuint m_waterDUDVTexture;    // DUDV map texture for water
->>>>>>> Stashed changes
 
     // skybox
     GLMesh *m_skyCube = nullptr;
@@ -257,19 +253,13 @@ private:
 
     void createScreenQuad(); // create [-1,1]^2 full-screen triangular grid
     void renderScene();
-<<<<<<< Updated upstream
-=======
 
-    //
+
     glm::mat4 createMirroredViewMatrix(float waterHeight);
-    //
     void renderSceneObject(const glm::mat4& viewMatrix);
-    //
     void renderReflection();
-    //
     void renderRefraction();
-    //
     void renderWater();
 
->>>>>>> Stashed changes
+
 };
