@@ -56,6 +56,9 @@ add_executable(${PROJECT_NAME}
     src/camera.h
     src/utils/gl_mesh.h
     src/terrain/voxel_chunk.cpp src/terrain/voxel_chunk.h
+    src/particles/particle.h
+    src/particles/particlesystem.cpp
+    src/particles/particlesystem.h
 
     # # ====== terrian / postprocessing ======
     # src/terrain/voxel_chunk.h
