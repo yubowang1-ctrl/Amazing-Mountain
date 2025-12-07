@@ -24,6 +24,7 @@
 #include "vegetation/lsystem_tree.h"
 #include "particles/particlesystem.h"
 #include "utils/camera_path.h"
+#include "lut_utils.h"
 
 class Realtime : public QOpenGLWidget
 {
@@ -190,6 +191,20 @@ private:
     GLuint m_normalMapTexture; // Normal map texture for water
     GLuint m_waterDUDVTexture; // DUDV map texture for water
 
+    // fog
+    bool m_enableFog = true;
+    bool m_enableHeightFog = true;
+    float m_fogDensity = 0.15f;
+    float m_fogHeightFalloff = 0.08f;
+    float m_fogStart = 0.0f;
+    glm::vec3 m_fogColor = glm::vec3(0.85f, 0.88f, 0.92f);
+
+    // LUT
+    GLuint m_texColorLUT = 0;
+    int    m_lutSize = 32;
+    bool   m_enableColorLUT = false;
+    int    m_lutPreset = 0;
+
     // skybox
     GLMesh *m_skyCube = nullptr;
     GLuint m_progSky = 0;
@@ -266,4 +281,5 @@ private:
     void renderReflection();
     void renderRefraction();
     void renderWater();
+    void calculateFrustumCorners(glm::vec3 corners[4]) const;
 };

@@ -17,3 +17,7 @@ lib/
 *.dylib
 *.so
 *.a
+*.user
+*.user
+CMakeLists.txt.user
+CMakeLists.txt.user.42623d5

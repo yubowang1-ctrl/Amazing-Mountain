@@ -23,6 +23,16 @@ uniform vec3 ws_cam_pos;
 
 uniform float u_near;
 uniform float u_far;
+uniform vec3  uFogColor;
+uniform float uFogDensity;
+
+uniform bool uEnableFog;
+
+uniform float uTime;
+uniform float uTiling; // Texture tiling frequency
+uniform float uScrollSpeed; // Scrolling speed
+uniform vec2  uScrollDir;   // Scrolling direction
+uniform float uNormalStrength;
 
 // Time factor for animation
 uniform float u_timeFactor;
@@ -141,11 +151,13 @@ vec3 phongLight(Light light, vec3 pos, vec3 normal, vec3 directionToCamera) {
         specular = globalData.ks * vec3(1.0) * pow(RdotV, 64.0) * light.color;
     }
 
-    return (diffuse + specular) * attenuation;
+return (diffuse + specular) * attenuation;
 }
 
 // GLSL: Combination - Blend all effects
 void main() {
+    // 1. --- WATER SURFACE LOGIC (From HEAD) ---
+    
     // Get distorted UV coordinates
     vec2 distortedUV = getDistortedUV();
 
@@ -160,14 +172,13 @@ void main() {
     // Calculate view direction
     vec3 viewDir = normalize(ws_cam_pos - ws_pos);
 
-
     // Calculate Fresnel
     float fresnel = calculateFresnel(viewDir, ws_norm);
 
     // Calculate water depth
     float depthFactor = calculateWaterDepth(distortedUV);
 
-    // Calculate lighting
+    // Calculate lighting (Looping through lights)
     vec3 directionToCamera = ws_cam_pos - ws_pos;
     vec3 lighting = globalData.ka * vec3(0.2, 0.5, 0.8); // Ambient water color
     for (int i = 0; i < number_light; i++) {
@@ -183,5 +194,38 @@ void main() {
     // Add lighting
     waterColor += lighting * 0.3;
 
-    fragColor = vec4(waterColor, 0.8);
+
+    // 2. --- FOG LOGIC (From latest_ver) ---
+    // Adapted to use 'ws_pos' and 'ws_cam_pos' to match the code above
+    
+    float finalFog = 0.0;
+
+    if (uEnableFog) {
+        // A. Distance Fog
+        float dist = length(ws_cam_pos - ws_pos);
+        // Using the lighter density (0.05) we discussed earlier
+        float fogDist = 1.0 - exp(-uFogDensity * 0.05 * dist);
+
+        // B. Altitude Fog
+        float fogBottom = -40.0;
+        float fogTop = 20.0;
+        float fogHeight = 1.0 - smoothstep(fogBottom, fogTop, ws_pos.y);
+
+        // Cap altitude fog opacity
+        fogHeight = fogHeight * 0.4;
+
+        // C. Combine
+        finalFog = clamp(max(fogDist, fogHeight), 0.0, 1.0);
+    }
+
+    // 3. --- FINAL COMPOSITION ---
+    
+    vec3 safeFogColor = (length(uFogColor) < 0.001) ? vec3(0.5, 0.6, 0.7) : uFogColor;
+    
+    // Mix the detailed water color with the fog
+    vec3 finalColor = mix(waterColor, safeFogColor, finalFog);
+
+    // Output with 0.8 alpha (from HEAD) or 1.0, depending on preference. 
+    // Usually 0.8 is good for water transparency if blending is enabled.
+    fragColor = vec4(finalColor, 0.8); 
 }

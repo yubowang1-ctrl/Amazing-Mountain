@@ -134,8 +134,29 @@ void Realtime::destroyMeshCache()
     m_meshCache.clear(); // clear map
 }
 
-void Realtime::buildForest()
-{
+void Realtime::calculateFrustumCorners(glm::vec3 corners[4]) const {
+    float aspect = m_cam.aspect;
+    float fovY = m_cam.fovyRad;
+    float nearDist = m_cam.nearP;
+
+    float nearHeight = 2.0f * nearDist * std::tan(fovY * 0.5f);
+    float nearWidth = nearHeight * aspect;
+
+    glm::vec3 forward = glm::normalize(m_cam.look);
+    glm::vec3 right = glm::normalize(glm::cross(forward, m_cam.up));
+    glm::vec3 up = glm::normalize(glm::cross(right, forward));
+
+    glm::vec3 nearCenter = m_cam.eye + forward * nearDist;
+    glm::vec3 halfRight = right * (nearWidth * 0.5f);
+    glm::vec3 halfUp = up * (nearHeight * 0.5f);
+
+    corners[0] = (nearCenter - halfRight + halfUp) - m_cam.eye;
+    corners[1] = (nearCenter + halfRight + halfUp) - m_cam.eye;
+    corners[2] = (nearCenter - halfRight - halfUp) - m_cam.eye;
+    corners[3] = (nearCenter + halfRight - halfUp) - m_cam.eye;
+}
+
+void Realtime::buildForest() {
     const size_t maxBranches = 800000;
     const size_t maxLeaves = 1600000;
 
@@ -761,8 +782,9 @@ void Realtime::renderScene()
         glUniform3fv(glGetUniformLocation(m_progTerrain, "uSunColor"), 1, &sunColor[0]);
         glUniform3fv(glGetUniformLocation(m_progTerrain, "uAmbientColor"), 1, &ambColor[0]);
 
-        glUniform3fv(glGetUniformLocation(m_progTerrain, "uFogColor"), 1, &fogColor[0]);
-        glUniform1f(glGetUniformLocation(m_progTerrain, "uFogDensity"), fogDensity);
+        glUniform1i(glGetUniformLocation(m_progTerrain, "uEnableFog"), m_enableFog);
+        glUniform1f(glGetUniformLocation(m_progTerrain, "uFogDensity"), m_fogDensity);
+        glUniform3fv(glGetUniformLocation(m_progTerrain, "uFogColor"), 1, &m_fogColor[0]);
 
         glUniform1f(glGetUniformLocation(m_progTerrain, "uSeaHeight"), m_seaHeightWorld);
         glUniform1f(glGetUniformLocation(m_progTerrain, "uHeightScale"), m_heightScaleWorld);
@@ -834,6 +856,59 @@ void Realtime::renderScene()
         m_terrainMesh.draw();
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
+
+    // water
+    if (m_progWater && m_texWaterNormal) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        glUseProgram(m_progWater);
+
+        auto set4 = [&](const char *n, const glm::mat4 &M){
+            glUniformMatrix4fv(glGetUniformLocation(m_progWater, n),
+                               1, GL_FALSE, &M[0][0]);
+        };
+        set4("uProj",  m_cam.proj());
+        set4("uView",  m_cam.view());
+        set4("uModel", m_terrainModel); // same model matrix used in terrain
+
+        glUniform3fv(glGetUniformLocation(m_progWater, "uEye"), 1, &m_cam.eye[0]);
+
+        // Water uses softer lighting for better visual appearance
+        glm::vec3 waterSunColor(1.5f);   // intentionally dimmer than terrain
+        glm::vec3 waterAmbient(0.25f);   // intentionally darker
+
+        glUniform3fv(glGetUniformLocation(m_progWater, "uSunDir"),       1, &sunDir[0]);
+        glUniform3fv(glGetUniformLocation(m_progWater, "uSunColor"),     1, &waterSunColor[0]);
+        glUniform3fv(glGetUniformLocation(m_progWater, "uAmbientColor"), 1, &waterAmbient[0]);
+
+        // Adjustable: water color and transparency specs
+        glm::vec3 shallow(0.12, 0.4, 0.6);;
+        glm::vec3 deep(0.02, 0.1, 0.3);
+        glUniform3fv(glGetUniformLocation(m_progWater, "uWaterColorShallow"), 1, &shallow[0]);
+        glUniform3fv(glGetUniformLocation(m_progWater, "uWaterColorDeep"),    1, &deep[0]);
+        glUniform1f(glGetUniformLocation(m_progWater, "uWaterAlpha"), 0.65f);
+
+        // normal scrolling parameters for water "scrolling texture"
+        glUniform1f(glGetUniformLocation(m_progWater, "uTime"),          m_time);
+        glUniform1f(glGetUniformLocation(m_progWater, "uTiling"),        3.0f);
+        glUniform1f(glGetUniformLocation(m_progWater, "uScrollSpeed"),   0.05f);
+        glm::vec2 scrollDir(1.0f, 0.3f);
+        glUniform2fv(glGetUniformLocation(m_progWater, "uScrollDir"),    1, &scrollDir[0]);
+        glUniform1f(glGetUniformLocation(m_progWater, "uNormalStrength"),0.4f);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, m_texWaterNormal);
+        glUniform1i(glGetUniformLocation(m_progWater, "uNormalMap"), 0);
+
+        glUniform1i(glGetUniformLocation(m_progWater, "uEnableFog"), m_enableFog);
+        glUniform1f(glGetUniformLocation(m_progWater, "uFogDensity"), m_fogDensity);
+        glUniform3fv(glGetUniformLocation(m_progWater, "uFogColor"), 1, &m_fogColor[0]);
+
+        m_waterMesh.draw();
+
+        glDisable(GL_BLEND);
     }
 
     // forest: use instance rendering shader
@@ -1382,6 +1457,11 @@ void Realtime::finish()
     destroySceneFBO();
     m_screenQuad.destroy();
 
+    if (m_texColorLUT) {
+        glDeleteTextures(1, &m_texColorLUT);
+        m_texColorLUT = 0;
+    }
+
     this->doneCurrent();
 }
 
@@ -1511,13 +1591,14 @@ void Realtime::initializeGL()
         m_texGrassRough = loadTexture2D(":/resources/textures/terrain/grass/roughness.jpg", false);
         m_texRockRough = loadTexture2D(":/resources/textures/terrain/rock_beach/roughness.jpg", false);
         m_texBeachRough = loadTexture2D(":/resources/textures/terrain/beach/roughness.jpg", false);
-        m_texRockHighRough = loadTexture2D(":/resources/textures/terrain/rock/roughness.jpg", false);
-        m_texSnowRough = loadTexture2D(":/resources/textures/terrain/snow/roughness.jpg", false);
-    }
-    else
-    {
+        m_texRockHighRough  = loadTexture2D(":/resources/textures/terrain/rock/roughness.jpg", false);
+        m_texSnowRough  = loadTexture2D(":/resources/textures/terrain/snow/roughness.jpg", false);
+    } else {
         m_hasTerrain = false;
     }
+
+    std::vector<float> lutData = LUTUtils::generateIdentityLUT(m_lutSize);
+    m_texColorLUT = LUTUtils::createLUT3DTexture(m_lutSize, lutData);
 
     // z-up (lab07) -> y-up (project) : translate center, scale, rotate -90° around +X
     glm::mat4 T = glm::translate(glm::mat4(1.f), glm::vec3(-0.5f, -0.5f, 0.f));
@@ -1695,19 +1776,15 @@ void Realtime::initializeGL()
     m_waterDUDVTexture = loadTexture2D(":/resources/textures/waterDUDV.png", false);
 }
 
-void Realtime::paintGL()
-{
-    if (!m_progTerrain && !m_progWater && !m_progSky)
-    {
-        qWarning("No scene shader loaded");
+void Realtime::paintGL() {
+    if (!m_progTerrain || !m_progWater || !m_progSky) {
+        // qWarning("No scene shader loaded");
         return;
     }
 
-    // Record the FBO bound
     GLint prevFBO = 0;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
 
-    // Current viewport size
     GLint vp[4];
     glGetIntegerv(GL_VIEWPORT, vp);
     int w = vp[2];
@@ -1743,16 +1820,17 @@ void Realtime::paintGL()
     renderScene();
     renderWater();
 
-    // Post-processing pass
-
     glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
     glViewport(0, 0, w, h);
-
     glDisable(GL_DEPTH_TEST);
+
+    if (!m_progPost) {
+        // fallback if shader failed
+        return;
+    }
 
     glUseProgram(m_progPost);
 
-    // Bind scene color / depth texture
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_texSceneColor);
     glUniform1i(glGetUniformLocation(m_progPost, "uSceneColor"), 0);
@@ -1761,7 +1839,14 @@ void Realtime::paintGL()
     glBindTexture(GL_TEXTURE_2D, m_texSceneDepth);
     glUniform1i(glGetUniformLocation(m_progPost, "uSceneDepth"), 1);
 
-    // Camera near/far, used for depth linearization
+    bool applyLUT = m_enableColorLUT && (m_texColorLUT > 0);
+
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_3D, m_texColorLUT);
+    glUniform1i(glGetUniformLocation(m_progPost, "uColorLUT"), 2);
+
+    glUniform1i(glGetUniformLocation(m_progPost, "uEnableColorGrading"), applyLUT);
+
     glUniform1f(glGetUniformLocation(m_progPost, "uNear"), m_cam.nearP);
     glUniform1f(glGetUniformLocation(m_progPost, "uFar"), m_cam.farP);
 
@@ -1806,6 +1891,9 @@ void Realtime::paintGL()
     // Draw a full-screen quad, and output the processed result to prevFBO (screen or screenshot FBO).
     m_screenQuad.draw();
 
+    glActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_3D, 0);
+    glActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, 0);
     glEnable(GL_DEPTH_TEST);
 }
 
@@ -1966,6 +2054,34 @@ void Realtime::keyPressEvent(QKeyEvent *event)
         }
     }
     m_keyMap[Qt::Key(event->key())] = true;
+
+    // Fog toggle
+    if (event->key() == Qt::Key_F) {
+        m_enableFog = !m_enableFog;
+        update();
+    }
+
+    // Color LUT toggle
+    if (event->key() == Qt::Key_L) {
+        m_enableColorLUT = !m_enableColorLUT;
+        update();
+    }
+
+    // LUT Preset 1: Warm/Golden
+    if (event->key() == Qt::Key_1) {
+        std::vector<float> lutData = LUTUtils::generateStyledLUT(m_lutSize, 1);
+        glDeleteTextures(1, &m_texColorLUT);
+        m_texColorLUT = LUTUtils::createLUT3DTexture(m_lutSize, lutData);
+        update();
+    }
+
+    // LUT Preset 2: Cool/Blue
+    if (event->key() == Qt::Key_2) {
+        std::vector<float> lutData = LUTUtils::generateStyledLUT(m_lutSize, 2);
+        glDeleteTextures(1, &m_texColorLUT);
+        m_texColorLUT = LUTUtils::createLUT3DTexture(m_lutSize, lutData);
+        update();
+    }
 }
 
 void Realtime::keyReleaseEvent(QKeyEvent *event)
