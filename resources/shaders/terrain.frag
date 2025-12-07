@@ -39,8 +39,10 @@ uniform sampler2D uBeachRough;
 uniform sampler2D uSnowRough;
 
 // Fog
-uniform vec3  uFogColor;    // should roughly match sky horizon color
-uniform float uFogDensity;  // e.g. 0.02
+uniform vec3  uFogColor;
+uniform float uFogDensity;
+
+uniform bool uEnableFog;
 
 // Height normalization
 uniform float uSeaHeight;    // world-space sea level
@@ -314,12 +316,25 @@ void main()
 
     vec3 color = ambient + diffuse + specular;
 
-    // 3.8 Exponential distance fog in world space
-    float dist = length(uEye - v_worldPos);
-    float fog  = 1.0 - exp(-uFogDensity * dist);
-    fog = clamp(fog, 0.0, 1.0);
+    float finalFog = 0.0;
 
-    color = mix(color, uFogColor, fog);
+    if (uEnableFog) {
+        // distance Fog
+        float dist = length(uEye - v_worldPos);
+        float fogDist = 1.0 - exp(-uFogDensity * 0.5* dist);
 
-    fragColor = vec4(color, 1.0);
+        // altitude Fog
+        float fogBottom = -40.0;
+        float fogTop = 20.0;
+        float fogHeight = 1.0 - smoothstep(fogBottom, fogTop, v_worldPos.y);
+
+        fogHeight = fogHeight * 0.4;
+
+        finalFog = clamp(max(fogDist, fogHeight), 0.0, 1.0);
+    }
+
+    vec3 safeFogColor = (length(uFogColor) < 0.001) ? vec3(0.5, 0.6, 0.7) : uFogColor;
+    vec3 finalColor = mix(color, safeFogColor, finalFog);
+
+    fragColor = vec4(finalColor, 1.0);
 }

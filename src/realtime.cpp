@@ -609,8 +609,9 @@ void Realtime::renderScene(){
         glUniform3fv(glGetUniformLocation(m_progTerrain, "uSunColor"),     1, &sunColor[0]);
         glUniform3fv(glGetUniformLocation(m_progTerrain, "uAmbientColor"), 1, &ambColor[0]);
 
-        glUniform3fv(glGetUniformLocation(m_progTerrain, "uFogColor"),   1, &fogColor[0]);
-        glUniform1f (glGetUniformLocation(m_progTerrain, "uFogDensity"),    fogDensity);
+        glUniform1i(glGetUniformLocation(m_progTerrain, "uEnableFog"), m_enableFog);
+        glUniform1f(glGetUniformLocation(m_progTerrain, "uFogDensity"), m_fogDensity);
+        glUniform3fv(glGetUniformLocation(m_progTerrain, "uFogColor"), 1, &m_fogColor[0]);
 
         glUniform1f(glGetUniformLocation(m_progTerrain, "uSeaHeight"),   m_seaHeightWorld);
         glUniform1f(glGetUniformLocation(m_progTerrain, "uHeightScale"), m_heightScaleWorld);
@@ -727,6 +728,10 @@ void Realtime::renderScene(){
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, m_texWaterNormal);
         glUniform1i(glGetUniformLocation(m_progWater, "uNormalMap"), 0);
+
+        glUniform1i(glGetUniformLocation(m_progWater, "uEnableFog"), m_enableFog);
+        glUniform1f(glGetUniformLocation(m_progWater, "uFogDensity"), m_fogDensity);
+        glUniform3fv(glGetUniformLocation(m_progWater, "uFogColor"), 1, &m_fogColor[0]);
 
         m_waterMesh.draw();
 
@@ -1052,36 +1057,23 @@ void Realtime::initializeGL() {
 }
 
 void Realtime::paintGL() {
-    if (!m_progTerrain && !m_progWater && !m_progSky) {
-        qWarning("No scene shader loaded");
+    if (!m_progTerrain || !m_progWater || !m_progSky) {
+        // qWarning("No scene shader loaded");
         return;
     }
 
-    // Record the FBO bound
     GLint prevFBO = 0;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
 
-    // Current viewport size
     GLint vp[4];
     glGetIntegerv(GL_VIEWPORT, vp);
     int w = vp[2];
     int h = vp[3];
     if (w <= 0 || h <= 0) {
-        w = width()  * m_devicePixelRatio;
-        h = height() * m_devicePixelRatio;
+        w = width() * devicePixelRatio();
+        h = height() * devicePixelRatio();
     }
 
-    // If the post shader fails to compile: draw directly onto the screen.
-    if (!m_progPost) {
-        glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
-        glViewport(0, 0, w, h);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glEnable(GL_DEPTH_TEST);
-        renderScene();
-        return;
-    }
-
-    // Scene pass: Draw to m_fboScene
     ensureSceneFBO(w, h);
     glBindFramebuffer(GL_FRAMEBUFFER, m_fboScene);
     glViewport(0, 0, w, h);
@@ -1090,16 +1082,17 @@ void Realtime::paintGL() {
 
     renderScene();
 
-    // Post-processing pass
-
     glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
     glViewport(0, 0, w, h);
-
     glDisable(GL_DEPTH_TEST);
+
+    if (!m_progPost) {
+        // fallback if shader failed
+        return;
+    }
 
     glUseProgram(m_progPost);
 
-    // Bind scene color / depth texture
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_texSceneColor);
     glUniform1i(glGetUniformLocation(m_progPost, "uSceneColor"), 0);
@@ -1108,75 +1101,23 @@ void Realtime::paintGL() {
     glBindTexture(GL_TEXTURE_2D, m_texSceneDepth);
     glUniform1i(glGetUniformLocation(m_progPost, "uSceneDepth"), 1);
 
-    // Camera near/far, used for depth linearization
-    glUniform1f(glGetUniformLocation(m_progPost, "uNear"), m_cam.nearP);
-    glUniform1f(glGetUniformLocation(m_progPost, "uFar"),  m_cam.farP);
+    bool applyLUT = m_enableColorLUT && (m_texColorLUT > 0);
 
-    // Bind 3D LUT texture
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_3D, m_texColorLUT);
     glUniform1i(glGetUniformLocation(m_progPost, "uColorLUT"), 2);
 
-    // Camera position and view direction
-    glUniform3fv(glGetUniformLocation(m_progPost, "uCameraPos"), 1, &m_cam.eye[0]);
-    glUniform3fv(glGetUniformLocation(m_progPost, "uCameraView"), 1, &m_cam.look[0]);
+    glUniform1i(glGetUniformLocation(m_progPost, "uEnableColorGrading"), applyLUT);
 
-    // Frustum corners
-    glm::vec3 frustumCorners[4];
-    calculateFrustumCorners(frustumCorners);
-    glUniform3fv(glGetUniformLocation(m_progPost, "uFrustumNearTL"), 1, &frustumCorners[0][0]);
-    glUniform3fv(glGetUniformLocation(m_progPost, "uFrustumNearTR"), 1, &frustumCorners[1][0]);
-    glUniform3fv(glGetUniformLocation(m_progPost, "uFrustumNearBL"), 1, &frustumCorners[2][0]);
-    glUniform3fv(glGetUniformLocation(m_progPost, "uFrustumNearBR"), 1, &frustumCorners[3][0]);
+    glUniform1f(glGetUniformLocation(m_progPost, "uNear"), m_cam.nearP);
+    glUniform1f(glGetUniformLocation(m_progPost, "uFar"),  m_cam.farP);
 
-    // Fog parameters
-    glUniform1i(glGetUniformLocation(m_progPost, "uEnableFog"), m_enableFog ? 1 : 0);
-    glUniform1i(glGetUniformLocation(m_progPost, "uEnableHeightFog"), m_enableHeightFog ? 1 : 0);
-    glUniform3fv(glGetUniformLocation(m_progPost, "uFogColor"), 1, &m_fogColor[0]);
-    glUniform1f(glGetUniformLocation(m_progPost, "uFogDensity"), m_fogDensity);
-    glUniform1f(glGetUniformLocation(m_progPost, "uFogHeightFalloff"), m_fogHeightFalloff);
-    glUniform1f(glGetUniformLocation(m_progPost, "uFogStart"), m_fogStart);
-
-    // Color LUT parameters
-    glUniform1i(glGetUniformLocation(m_progPost, "uEnableColorLUT"), m_enableColorLUT ? 1 : 0);
-    glUniform1f(glGetUniformLocation(m_progPost, "uLUTSize"), static_cast<float>(m_lutSize));
-
-    // Select the preset and exposure based on the two checkboxes in the UI
-    int   preset   = settings.colorGradePreset;  // 0 = none, 1 = cold, 3 = rainy
-    float exposure = 0.0f;
-    float strength = 0.0f; // color intensity
-
-    if (preset == 1) {
-        // Cold Blue Snow Mountain
-        exposure = 0.18f;
-        strength = 0.85f;
-    } else if (preset == 3) {
-        // Rainy
-        exposure = -0.18f;
-        strength = 0.90f;
-    } else {
-        // Default
-        exposure = 0.0f;
-        strength = 0.0f;
-    }
-
-    glUniform1f(glGetUniformLocation(m_progPost, "uExposure"), exposure);
-
-    // Adjustable: neutral lift/gamma/gain specs (modified in shader post.frag)
-    glUniform3f(glGetUniformLocation(m_progPost, "uLift"),  0.0f, 0.0f, 0.0f);
-    glUniform3f(glGetUniformLocation(m_progPost, "uGamma"), 1.0f, 1.0f, 1.0f);
-    glUniform3f(glGetUniformLocation(m_progPost, "uGain"),  1.0f, 1.0f, 1.0f);
-
-    // Transmit preset + intensity
-    glUniform1i(glGetUniformLocation(m_progPost, "uGradePreset"), preset);
-    glUniform1f(glGetUniformLocation(m_progPost, "uGradeStrength"), strength);
-
-    // Adjustable: default tint (modified in shader post.frag)
-    glUniform3f(glGetUniformLocation(m_progPost, "uTint"), 1.0f, 1.0f, 1.0f);
-
-    // Draw a full-screen quad, and output the processed result to prevFBO (screen or screenshot FBO).
+    // Draw the full screen quad
     m_screenQuad.draw();
 
+    glActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_3D, 0);
+    glActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, 0);
     glEnable(GL_DEPTH_TEST);
 }
 

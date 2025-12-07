@@ -18,6 +18,11 @@ uniform vec3  uWaterColorShallow;
 uniform vec3  uWaterColorDeep;
 uniform float uWaterAlpha;
 
+uniform vec3  uFogColor;
+uniform float uFogDensity;
+
+uniform bool uEnableFog;
+
 uniform float uTime;
 uniform float uTiling; // Texture tiling frequency
 uniform float uScrollSpeed; // Scrolling speed
@@ -73,5 +78,25 @@ void main()
 
     vec3 color = ambient + diffuse + specular;
 
-    fragColor = vec4(color, uWaterAlpha);
+    float finalFog = 0.0;
+
+    if (uEnableFog) {
+        // 1. Distance Fog
+        float dist = length(uEye - v_worldPos);
+        float fogDist = 1.0 - exp(-uFogDensity * 0.5 * dist);
+
+        // 2. Altitude Fog
+        float fogBottom = -40.0;
+        float fogTop = 20.0;
+        float fogHeight = 1.0 - smoothstep(fogBottom, fogTop, v_worldPos.y);
+
+        fogHeight = fogHeight * 0.4;
+
+        finalFog = clamp(max(fogDist, fogHeight), 0.0, 1.0);
+    }
+
+    vec3 safeFogColor = (length(uFogColor) < 0.001) ? vec3(0.5, 0.6, 0.7) : uFogColor;
+    vec3 finalColor = mix(color, safeFogColor, finalFog);
+
+    fragColor = vec4(finalColor, 1.0);
 }
