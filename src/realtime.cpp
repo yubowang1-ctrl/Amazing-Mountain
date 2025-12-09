@@ -1183,11 +1183,9 @@ void Realtime::renderReflection()
     glViewport(0, 0, m_fbo_width, m_fbo_height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Enable clipping plane to clip below water
     glEnable(GL_CLIP_PLANE0);
     // Set clipping plane: (0, 1, 0, -WATER_HEIGHT) - clips below water
-    double clipPlane[4] = {0.0, 1.0, 0.0, -WATER_HEIGHT};
-    glClipPlane(GL_CLIP_PLANE0, clipPlane);
+    m_currentClipPlane = glm::vec4(0.0f, 1.0f, 0.0f, -WATER_HEIGHT);
 
     // Use mirrored view matrix
     glm::mat4 mirroredView = createMirroredViewMatrix(WATER_HEIGHT);
@@ -1207,11 +1205,9 @@ void Realtime::renderRefraction()
     glViewport(0, 0, m_fbo_width, m_fbo_height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Enable clipping plane to clip above water
     glEnable(GL_CLIP_PLANE0);
     // Set clipping plane: (0, -1, 0, WATER_HEIGHT) - clips above water
-    double clipPlane[4] = {0.0, -1.0, 0.0, WATER_HEIGHT};
-    glClipPlane(GL_CLIP_PLANE0, clipPlane);
+    m_currentClipPlane = glm::vec4(0.0f, -1.0f, 0.0f, WATER_HEIGHT);
 
     // Use normal view matrix
     renderSceneObject(m_cam.view());
@@ -1281,6 +1277,19 @@ void Realtime::renderWater()
 
     glm::vec3 sunDir = glm::normalize(glm::vec3(0.3f, -1.0f, 0.2f));
     glm::vec3 sunColor = glm::vec3(2.5f);
+
+    // Water parameters uniforms
+    GLint loc_waveStrength = glGetUniformLocation(m_progWater, "u_waveStrength");
+    glUniform1f(loc_waveStrength, settings.waveStrength);
+
+    GLint loc_waterClarity = glGetUniformLocation(m_progWater, "u_waterClarity");
+    glUniform1f(loc_waterClarity, settings.waterClarity);
+
+    GLint loc_fresnelPower = glGetUniformLocation(m_progWater, "u_fresnelPower");
+    glUniform1f(loc_fresnelPower, settings.fresnelPower);
+
+    GLint loc_waveSpeed = glGetUniformLocation(m_progWater, "u_waveSpeed");
+    glUniform1f(loc_waveSpeed, settings.waveSpeed);
 
     // Global data
     glUniform1f(glGetUniformLocation(m_progWater, "globalData.ka"), 0.5f);

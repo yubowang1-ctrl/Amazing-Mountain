@@ -28,6 +28,7 @@ private:
     void connectParam7();
     void connectNear();
     void connectFar();
+    void connectWaterSettings();
 
     // From old Project 6
     // void connectPerPixelFilter();
@@ -66,6 +67,16 @@ private:
     QDoubleSpinBox *nearBox;
     QDoubleSpinBox *farBox;
 
+    // Water Settings
+    QSlider *waveSpeedSlider;
+    QSlider *waveStrengthSlider;
+    QSlider *waterClaritySlider;
+    QSlider *fresnelPowerSlider;
+    QDoubleSpinBox *waveSpeedBox;
+    QDoubleSpinBox *waveStrengthBox;
+    QDoubleSpinBox *waterClarityBox;
+    QDoubleSpinBox *fresnelPowerBox;
+
     // Extra Credit:
     QCheckBox *ec1;
     QCheckBox *ec2;
@@ -93,6 +104,15 @@ private slots:
     void onValChangeFarSlider(int newValue);
     void onValChangeNearBox(double newValue);
     void onValChangeFarBox(double newValue);
+    // Water Settings slots
+    void onValChangeWaveSpeedSlider(int newValue);
+    void onValChangeWaveSpeedBox(double newValue);
+    void onValChangeWaveStrengthSlider(int newValue);
+    void onValChangeWaveStrengthBox(double newValue);
+    void onValChangeWaterClaritySlider(int newValue);
+    void onValChangeWaterClarityBox(double newValue);
+    void onValChangeFresnelPowerSlider(int newValue);
+    void onValChangeFresnelPowerBox(double newValue);
 
     // Extra Credit:
     void onExtraCredit1();

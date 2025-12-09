@@ -7,6 +7,7 @@ layout(location = 2) in vec3 os_uv;
 out vec3 ws_pos;
 out vec3 ws_norm;
 out vec2 uv;
+out vec4 clipSpace;
 
 uniform mat4 model_matrix;
 uniform mat4 view_matrix;
@@ -19,7 +20,7 @@ void main() {
     ws_norm = model_normal_matrix * normalize(os_norm);
 
     uv = os_uv.xy;
-
-    gl_Position = proj_matrix * view_matrix * vec4(ws_pos, 1.0);
+    clipSpace = proj_matrix * view_matrix * vec4(ws_pos, 1.0);
+    gl_Position = clipSpace;
 }
 

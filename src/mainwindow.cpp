@@ -72,6 +72,19 @@ void MainWindow::initialize()
     QLabel *far_label = new QLabel(); // Far plane label
     far_label->setText("Far Plane:");
 
+    // Water Settings labels
+    QLabel *water_label = new QLabel(); // Water Settings label
+    water_label->setText("Water Settings");
+    water_label->setFont(font);
+    QLabel *waveSpeed_label = new QLabel();
+    waveSpeed_label->setText("Wave Speed:");
+    QLabel *waveStrength_label = new QLabel();
+    waveStrength_label->setText("Wave Strength:");
+    QLabel *waterClarity_label = new QLabel();
+    waterClarity_label->setText("Water Clarity:");
+    QLabel *fresnelPower_label = new QLabel();
+    fresnelPower_label->setText("Fresnel Power:");
+
     // color grading UI
     QLabel *grade_label = new QLabel();
     grade_label->setText("Color Grading");
@@ -208,6 +221,84 @@ void MainWindow::initialize()
     p7Box->setSingleStep(1);
     p7Box->setValue(25);
 
+    // Water Settings controls
+    // Wave Speed
+    QGroupBox *waveSpeedLayout = new QGroupBox();
+    QHBoxLayout *l_waveSpeed = new QHBoxLayout();
+    waveSpeedSlider = new QSlider(Qt::Orientation::Horizontal);
+    waveSpeedSlider->setTickInterval(1);
+    waveSpeedSlider->setMinimum(0);
+    waveSpeedSlider->setMaximum(100);  // 1.0 * 100
+    waveSpeedSlider->setValue(10);
+
+    waveSpeedBox = new QDoubleSpinBox();
+    waveSpeedBox->setMinimum(0.0);
+    waveSpeedBox->setMaximum(1.0);
+    waveSpeedBox->setSingleStep(0.01);
+    waveSpeedBox->setValue(0.1);
+    waveSpeedBox->setDecimals(2);
+    l_waveSpeed->addWidget(waveSpeedSlider);
+    l_waveSpeed->addWidget(waveSpeedBox);
+    waveSpeedLayout->setLayout(l_waveSpeed);
+
+    // Wave Strength
+    QGroupBox *waveStrengthLayout = new QGroupBox();
+    QHBoxLayout *l_waveStrength = new QHBoxLayout();
+    waveStrengthSlider = new QSlider(Qt::Orientation::Horizontal);
+    waveStrengthSlider->setTickInterval(1);
+    waveStrengthSlider->setMinimum(0);
+    waveStrengthSlider->setMaximum(10);  // 0.1 * 100
+    waveStrengthSlider->setValue(2);
+
+    waveStrengthBox = new QDoubleSpinBox();
+    waveStrengthBox->setMinimum(0.0);
+    waveStrengthBox->setMaximum(0.1);
+    waveStrengthBox->setSingleStep(0.001);
+    waveStrengthBox->setValue(0.02);
+    waveStrengthBox->setDecimals(3);
+    l_waveStrength->addWidget(waveStrengthSlider);
+    l_waveStrength->addWidget(waveStrengthBox);
+    waveStrengthLayout->setLayout(l_waveStrength);
+
+    // Water Clarity
+    QGroupBox *waterClarityLayout = new QGroupBox();
+    QHBoxLayout *l_waterClarity = new QHBoxLayout();
+    waterClaritySlider = new QSlider(Qt::Orientation::Horizontal);
+    waterClaritySlider->setTickInterval(1);
+    waterClaritySlider->setMinimum(0);
+    waterClaritySlider->setMaximum(100);  // 1.0 * 100
+    waterClaritySlider->setValue(10);
+
+    waterClarityBox = new QDoubleSpinBox();
+    waterClarityBox->setMinimum(0.0);
+    waterClarityBox->setMaximum(1.0);
+    waterClarityBox->setSingleStep(0.01);
+    waterClarityBox->setValue(0.1);
+    waterClarityBox->setDecimals(2);
+    l_waterClarity->addWidget(waterClaritySlider);
+    l_waterClarity->addWidget(waterClarityBox);
+    waterClarityLayout->setLayout(l_waterClarity);
+
+    // Fresnel Power
+    QGroupBox *fresnelPowerLayout = new QGroupBox();
+    QHBoxLayout *l_fresnelPower = new QHBoxLayout();
+    fresnelPowerSlider = new QSlider(Qt::Orientation::Horizontal);
+    fresnelPowerSlider->setTickInterval(1);
+    fresnelPowerSlider->setMinimum(1);   // 0.1 * 10
+    fresnelPowerSlider->setMaximum(100); // 10.0 * 10
+    fresnelPowerSlider->setValue(20);
+
+    fresnelPowerBox = new QDoubleSpinBox();
+    fresnelPowerBox->setMinimum(0.1);
+    fresnelPowerBox->setMaximum(10.0);
+    fresnelPowerBox->setSingleStep(0.1);
+    fresnelPowerBox->setValue(2.0);
+    fresnelPowerBox->setDecimals(1);
+    l_fresnelPower->addWidget(fresnelPowerSlider);
+    l_fresnelPower->addWidget(fresnelPowerBox);
+    fresnelPowerLayout->setLayout(l_fresnelPower);
+
+
     // Adds the slider and number box to the parameter layouts
     l1->addWidget(p1Slider);
     l1->addWidget(p1Box);
@@ -322,6 +413,17 @@ void MainWindow::initialize()
     vLayout->addWidget(far_label);
     vLayout->addWidget(farLayout);
 
+    // Water Settings:
+    vLayout->addWidget(water_label);
+    vLayout->addWidget(waveSpeed_label);
+    vLayout->addWidget(waveSpeedLayout);
+    vLayout->addWidget(waveStrength_label);
+    vLayout->addWidget(waveStrengthLayout);
+    vLayout->addWidget(waterClarity_label);
+    vLayout->addWidget(waterClarityLayout);
+    vLayout->addWidget(fresnelPower_label);
+    vLayout->addWidget(fresnelPowerLayout);
+
     // From old Project 6
     // vLayout->addWidget(filters_label);
     // vLayout->addWidget(filter1);
@@ -380,6 +482,7 @@ void MainWindow::connectUIElements()
     connectFar();
     connectExtraCredit();
     connectColorGrade();
+    connectWaterSettings();
 }
 
 // From old Project 6
@@ -486,6 +589,28 @@ void MainWindow::connectColorGrade()
         connect(checkBoxRainy, &QCheckBox::toggled,
                 this, &MainWindow::on_checkBoxRainy_toggled);
     }
+}
+
+void MainWindow::connectWaterSettings() {
+    // Wave Speed
+    connect(waveSpeedSlider, &QSlider::valueChanged, this, &MainWindow::onValChangeWaveSpeedSlider);
+    connect(waveSpeedBox, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+            this, &MainWindow::onValChangeWaveSpeedBox);
+
+    // Wave Strength
+    connect(waveStrengthSlider, &QSlider::valueChanged, this, &MainWindow::onValChangeWaveStrengthSlider);
+    connect(waveStrengthBox, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+            this, &MainWindow::onValChangeWaveStrengthBox);
+
+    // Water Clarity
+    connect(waterClaritySlider, &QSlider::valueChanged, this, &MainWindow::onValChangeWaterClaritySlider);
+    connect(waterClarityBox, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+            this, &MainWindow::onValChangeWaterClarityBox);
+
+    // Fresnel Power
+    connect(fresnelPowerSlider, &QSlider::valueChanged, this, &MainWindow::onValChangeFresnelPowerSlider);
+    connect(fresnelPowerBox, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+            this, &MainWindow::onValChangeFresnelPowerBox);
 }
 
 // From old Project 6
@@ -626,6 +751,56 @@ void MainWindow::onValChangeFarBox(double newValue)
     farSlider->setValue(int(newValue * 100.f));
     // farBox->setValue(newValue);
     settings.farPlane = farBox->value();
+    realtime->settingsChanged();
+}
+
+// Water Settings slots:
+
+void MainWindow::onValChangeWaveSpeedSlider(int newValue) {
+    waveSpeedBox->setValue(newValue / 100.0);
+    settings.waveSpeed = waveSpeedBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeWaveSpeedBox(double newValue) {
+    waveSpeedSlider->setValue(int(newValue * 100.0));
+    settings.waveSpeed = waveSpeedBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeWaveStrengthSlider(int newValue) {
+    waveStrengthBox->setValue(newValue / 100.0);
+    settings.waveStrength = waveStrengthBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeWaveStrengthBox(double newValue) {
+    waveStrengthSlider->setValue(int(newValue * 100.0));
+    settings.waveStrength = waveStrengthBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeWaterClaritySlider(int newValue) {
+    waterClarityBox->setValue(newValue / 100.0);
+    settings.waterClarity = waterClarityBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeWaterClarityBox(double newValue) {
+    waterClaritySlider->setValue(int(newValue * 100.0));
+    settings.waterClarity = waterClarityBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeFresnelPowerSlider(int newValue) {
+    fresnelPowerBox->setValue(newValue / 10.0);
+    settings.fresnelPower = fresnelPowerBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeFresnelPowerBox(double newValue) {
+    fresnelPowerSlider->setValue(int(newValue * 10.0));
+    settings.fresnelPower = fresnelPowerBox->value();
     realtime->settingsChanged();
 }
 

@@ -22,6 +22,12 @@ struct Settings
     bool extraCredit3 = false;
     bool extraCredit4 = false;
 
+    // Water rendering parameters
+    float waveSpeed = 0.1f;           // Range: 0.0 to 1.0
+    float waveStrength = 0.02f;       // Range: 0.0 to 0.1
+    float waterClarity = 0.1f;       // Range: 0.0 to 1.0
+    float fresnelPower = 2.0f;       // Range: 0.1 to 10.0
+
     // Post‑processing / color grading
     // 0 = off, 1 = cold blue, 3 = rainy / overcast
     int colorGradePreset = 0;
