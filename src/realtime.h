@@ -179,13 +179,13 @@ private:
     GLuint m_reflectionFBO;
     GLuint m_reflectionFBO_texture;
     GLuint m_reflectionFBO_renderbuffer;
-
     GLuint m_refractionFBO;
     GLuint m_refractionFBO_texture;
     GLuint m_refractionFBO_renderbuffer;
     GLuint m_refractionDepthTexture; // Depth texture for refraction FBO
     int m_fbo_width;
     int m_fbo_height;
+    glm::vec4 m_currentClipPlane;
 
     // Water textures
     GLuint m_normalMapTexture; // Normal map texture for water
