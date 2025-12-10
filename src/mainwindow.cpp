@@ -85,6 +85,15 @@ void MainWindow::initialize()
     QLabel *fresnelPower_label = new QLabel();
     fresnelPower_label->setText("Fresnel Power:");
 
+    // Depth of Field UI
+    QLabel *dof_label = new QLabel();
+    dof_label->setText("Depth of Field");
+    dof_label->setFont(font);
+    QLabel *focusDist_label = new QLabel();
+    focusDist_label->setText("Focus Distance:");
+    QLabel *blurStrength_label = new QLabel();
+    blurStrength_label->setText("Blur Strength:");
+
     // color grading UI
     QLabel *grade_label = new QLabel();
     grade_label->setText("Color Grading");
@@ -97,6 +106,49 @@ void MainWindow::initialize()
     checkBoxRainy = new QCheckBox();
     checkBoxRainy->setText(QStringLiteral("Rainy / Overcast"));
     checkBoxRainy->setChecked(settings.colorGradePreset == 2);
+
+    // Depth of Field controls
+    dofToggle = new QCheckBox();
+    dofToggle->setText(QStringLiteral("Enable DoF"));
+    dofToggle->setChecked(settings.enableDoF);
+
+    // Focus Distance
+    QGroupBox *focusDistLayout = new QGroupBox();
+    QHBoxLayout *l_focusDist = new QHBoxLayout();
+    focusDistSlider = new QSlider(Qt::Orientation::Horizontal);
+    focusDistSlider->setTickInterval(1);
+    focusDistSlider->setMinimum(1);   // 0.1 * 10
+    focusDistSlider->setMaximum(500); // 50.0 * 10
+    focusDistSlider->setValue(150);   // 15.0 * 10
+
+    focusDistBox = new QDoubleSpinBox();
+    focusDistBox->setMinimum(0.1);
+    focusDistBox->setMaximum(50.0);
+    focusDistBox->setSingleStep(0.1);
+    focusDistBox->setValue(15.0);
+    focusDistBox->setDecimals(1);
+    l_focusDist->addWidget(focusDistSlider);
+    l_focusDist->addWidget(focusDistBox);
+    focusDistLayout->setLayout(l_focusDist);
+
+    // Blur Strength
+    QGroupBox *blurStrengthLayout = new QGroupBox();
+    QHBoxLayout *l_blurStrength = new QHBoxLayout();
+    blurStrengthSlider = new QSlider(Qt::Orientation::Horizontal);
+    blurStrengthSlider->setTickInterval(1);
+    blurStrengthSlider->setMinimum(0);   // 0.0 * 10
+    blurStrengthSlider->setMaximum(100); // 10.0 * 10
+    blurStrengthSlider->setValue(20);    // 2.0 * 10
+
+    blurStrengthBox = new QDoubleSpinBox();
+    blurStrengthBox->setMinimum(0.0);
+    blurStrengthBox->setMaximum(10.0);
+    blurStrengthBox->setSingleStep(0.1);
+    blurStrengthBox->setValue(2.0);
+    blurStrengthBox->setDecimals(1);
+    l_blurStrength->addWidget(blurStrengthSlider);
+    l_blurStrength->addWidget(blurStrengthBox);
+    blurStrengthLayout->setLayout(l_blurStrength);
 
     // From old Project 6
     // // Create checkbox for per-pixel filter
@@ -436,6 +488,14 @@ void MainWindow::initialize()
     vLayout->addWidget(ec3);
     vLayout->addWidget(ec4);
 
+    // Depth of Field:
+    vLayout->addWidget(dof_label);
+    vLayout->addWidget(dofToggle);
+    vLayout->addWidget(focusDist_label);
+    vLayout->addWidget(focusDistLayout);
+    vLayout->addWidget(blurStrength_label);
+    vLayout->addWidget(blurStrengthLayout);
+
     vLayout->addWidget(grade_label);
     vLayout->addWidget(checkBoxColdBlue);
     vLayout->addWidget(checkBoxRainy);
@@ -456,6 +516,10 @@ void MainWindow::initialize()
     // Set default values for near and far planes
     onValChangeNearBox(0.1f);
     onValChangeFarBox(10.f);
+
+    // Set default values for DoF
+    onValChangeFocusDistBox(15.0);
+    onValChangeBlurStrengthBox(2.0);
 }
 
 void MainWindow::finish()
@@ -483,6 +547,7 @@ void MainWindow::connectUIElements()
     connectExtraCredit();
     connectColorGrade();
     connectWaterSettings();
+    connectDoFSettings();
 }
 
 // From old Project 6
@@ -611,6 +676,21 @@ void MainWindow::connectWaterSettings() {
     connect(fresnelPowerSlider, &QSlider::valueChanged, this, &MainWindow::onValChangeFresnelPowerSlider);
     connect(fresnelPowerBox, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
             this, &MainWindow::onValChangeFresnelPowerBox);
+}
+
+void MainWindow::connectDoFSettings() {
+    // DoF Toggle
+    connect(dofToggle, &QCheckBox::clicked, this, &MainWindow::onToggleDoF);
+
+    // Focus Distance
+    connect(focusDistSlider, &QSlider::valueChanged, this, &MainWindow::onValChangeFocusDistSlider);
+    connect(focusDistBox, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+            this, &MainWindow::onValChangeFocusDistBox);
+
+    // Blur Strength
+    connect(blurStrengthSlider, &QSlider::valueChanged, this, &MainWindow::onValChangeBlurStrengthSlider);
+    connect(blurStrengthBox, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+            this, &MainWindow::onValChangeBlurStrengthBox);
 }
 
 // From old Project 6
@@ -870,4 +950,39 @@ void MainWindow::on_checkBoxRainy_toggled(bool checked)
     }
 
     realtime->update();
+}
+
+// Depth of Field slots
+void MainWindow::onToggleDoF()
+{
+    settings.enableDoF = dofToggle->isChecked();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeFocusDistSlider(int v)
+{
+    focusDistBox->setValue(v / 10.0);
+    settings.focusDistance = focusDistBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeFocusDistBox(double v)
+{
+    focusDistSlider->setValue(int(v * 10.0));
+    settings.focusDistance = focusDistBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeBlurStrengthSlider(int v)
+{
+    blurStrengthBox->setValue(v / 10.0);
+    settings.blurStrength = blurStrengthBox->value();
+    realtime->settingsChanged();
+}
+
+void MainWindow::onValChangeBlurStrengthBox(double v)
+{
+    blurStrengthSlider->setValue(int(v * 10.0));
+    settings.blurStrength = blurStrengthBox->value();
+    realtime->settingsChanged();
 }

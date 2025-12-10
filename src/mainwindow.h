@@ -29,6 +29,7 @@ private:
     void connectNear();
     void connectFar();
     void connectWaterSettings();
+    void connectDoFSettings();
 
     // From old Project 6
     // void connectPerPixelFilter();
@@ -86,6 +87,13 @@ private:
     QCheckBox *checkBoxColdBlue = nullptr;
     QCheckBox *checkBoxRainy = nullptr;
 
+    // Depth of Field Settings
+    QCheckBox *dofToggle;
+    QSlider *focusDistSlider;
+    QDoubleSpinBox *focusDistBox;
+    QSlider *blurStrengthSlider;
+    QDoubleSpinBox *blurStrengthBox;
+
 private slots:
     // From old Project 6
     // void onPerPixelFilter();
@@ -122,4 +130,11 @@ private slots:
 
     void on_checkBoxColdBlue_toggled(bool checked);
     void on_checkBoxRainy_toggled(bool checked);
+
+    // Depth of Field slots
+    void onToggleDoF();
+    void onValChangeFocusDistSlider(int v);
+    void onValChangeFocusDistBox(double v);
+    void onValChangeBlurStrengthSlider(int v);
+    void onValChangeBlurStrengthBox(double v);
 };

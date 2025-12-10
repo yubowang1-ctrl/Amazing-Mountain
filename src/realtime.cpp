@@ -570,6 +570,34 @@ GLuint Realtime::loadTexture2D(const QString &path, bool srgb)
     return tex;
 }
 
+GLuint Realtime::loadCubemap(const std::vector<QString> &faces)
+{
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        QImage img(faces[i]);
+        if (img.isNull()) {
+            std::cout << "Cubemap texture failed to load at path: " << faces[i].toStdString() << std::endl;
+            continue;
+        }
+        img = img.convertToFormat(QImage::Format_RGBA8888); 
+    
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, 
+                     img.width(), img.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
+    }
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
+}
+
 void Realtime::destroySceneFBO()
 {
     if (m_texSceneColor)
@@ -740,16 +768,18 @@ void Realtime::renderScene()
         setSkyMat4("uView", viewNoTrans);
         setSkyMat4("uProj", m_cam.proj());
 
-        glUniform3fv(glGetUniformLocation(m_progSky, "uSunDir"), 1, &sunDir[0]);
-        glUniform3fv(glGetUniformLocation(m_progSky, "uSunColor"), 1, &sunColor[0]);
-
-        glm::vec3 skyTop(0.04f, 0.23f, 0.48f);
-        glm::vec3 skyHori(0.42f, 0.60f, 0.85f);
-        glm::vec3 skyBottom(0.75f, 0.65f, 0.55f);
-
-        glUniform3fv(glGetUniformLocation(m_progSky, "uSkyTopColor"), 1, &skyTop[0]);
-        glUniform3fv(glGetUniformLocation(m_progSky, "uSkyHorizonColor"), 1, &skyHori[0]);
-        glUniform3fv(glGetUniformLocation(m_progSky, "uSkyBottomColor"), 1, &skyBottom[0]);
+        glActiveTexture(GL_TEXTURE0);
+        
+        // 逻辑判断：如果 Preset 是 3 (Rainy) 或 1 (Cold/Snow)，使用雨天贴图
+        // 否则使用晴天贴图
+        if (settings.colorGradePreset == 3 || settings.colorGradePreset == 1) {
+            glBindTexture(GL_TEXTURE_CUBE_MAP, m_texSkyRainy);
+        } else {
+            glBindTexture(GL_TEXTURE_CUBE_MAP, m_texSkySunny);
+        }
+        
+        // 传递给 Shader (假设 samplerCube 名字叫 uSkybox)
+        glUniform1i(glGetUniformLocation(m_progSky, "uSkybox"), 0);
 
         m_skyCube->draw();
 
@@ -984,16 +1014,18 @@ void Realtime::renderSceneObject(const glm::mat4 &viewMatrix)
         setSkyMat4("uView", viewNoTrans);
         setSkyMat4("uProj", m_cam.proj());
 
-        glUniform3fv(glGetUniformLocation(m_progSky, "uSunDir"), 1, &sunDir[0]);
-        glUniform3fv(glGetUniformLocation(m_progSky, "uSunColor"), 1, &sunColor[0]);
+        glActiveTexture(GL_TEXTURE0);
+        
+        // if Preset = 3 (Rainy) or 1 (Cold/Snow), use rainy skybox
+        // or use sunny skybox
+        if (settings.colorGradePreset == 3 || settings.colorGradePreset == 1) {
+            glBindTexture(GL_TEXTURE_CUBE_MAP, m_texSkyRainy);
+        } else {
+            glBindTexture(GL_TEXTURE_CUBE_MAP, m_texSkySunny);
+        }
+        
 
-        glm::vec3 skyTop(0.04f, 0.23f, 0.48f);
-        glm::vec3 skyHori(0.42f, 0.60f, 0.85f);
-        glm::vec3 skyBottom(0.75f, 0.65f, 0.55f);
-
-        glUniform3fv(glGetUniformLocation(m_progSky, "uSkyTopColor"), 1, &skyTop[0]);
-        glUniform3fv(glGetUniformLocation(m_progSky, "uSkyHorizonColor"), 1, &skyHori[0]);
-        glUniform3fv(glGetUniformLocation(m_progSky, "uSkyBottomColor"), 1, &skyBottom[0]);
+        glUniform1i(glGetUniformLocation(m_progSky, "uSkybox"), 0);
 
         m_skyCube->draw();
 
@@ -1424,6 +1456,19 @@ void Realtime::finish()
         glDeleteProgram(m_progSky);
         m_progSky = 0;
     }
+    
+    // Cleanup skybox textures
+    if (m_texSkySunny)
+    {
+        glDeleteTextures(1, &m_texSkySunny);
+        m_texSkySunny = 0;
+    }
+    if (m_texSkyRainy)
+    {
+        glDeleteTextures(1, &m_texSkyRainy);
+        m_texSkyRainy = 0;
+    }
+    
     if (m_progForest)
     {
         glDeleteProgram(m_progForest);
@@ -1547,6 +1592,29 @@ void Realtime::initializeGL()
 
     // use cube mesh as skybox
     m_skyCube = getOrCreateMesh(PrimitiveType::PRIMITIVE_CUBE, 1, 1);
+
+    // Load skybox cubemaps
+    // 1. 加载晴天贴图 (加载顺序: Right, Left, Top, Bottom, Back, Front)
+    std::vector<QString> sunnyFaces = {
+        ":/resources/textures/sky/Sunny/Right.bmp",
+        ":/resources/textures/sky/Sunny/Left.bmp",
+        ":/resources/textures/sky/Sunny/Top.bmp",
+        ":/resources/textures/sky/Sunny/Bottom.bmp",
+        ":/resources/textures/sky/Sunny/Front.bmp",
+        ":/resources/textures/sky/Sunny/Back.bmp"
+    };
+    m_texSkySunny = loadCubemap(sunnyFaces);
+
+    // 2. 加载雨天贴图 (加载顺序: Right, Left, Top, Bottom, Back, Front)
+    std::vector<QString> rainyFaces = {
+        ":/resources/textures/sky/Rainy/right.jpg",
+        ":/resources/textures/sky/Rainy/left.jpg",
+        ":/resources/textures/sky/Rainy/top.jpg",
+        ":/resources/textures/sky/Rainy/bottom.jpg",
+        ":/resources/textures/sky/Rainy/front.jpg",
+        ":/resources/textures/sky/Rainy/back.jpg"
+    };
+    m_texSkyRainy = loadCubemap(rainyFaces);
 
     if (m_progTerrain)
     {
@@ -1831,6 +1899,23 @@ void Realtime::paintGL() {
 
     glUniform1f(glGetUniformLocation(m_progPost, "uNear"), m_cam.nearP);
     glUniform1f(glGetUniformLocation(m_progPost, "uFar"), m_cam.farP);
+
+    // Depth of Field parameters
+    if (settings.enableDoF) {
+        // Focus distance: clamp to be within nearP and farP range
+        float focusDist = settings.focusDistance;
+        focusDist = std::max(m_cam.nearP + 1.0f, std::min(focusDist, m_cam.farP - 1.0f));
+        
+        // Blur strength
+        float blurStrength = settings.blurStrength;
+        
+        glUniform1f(glGetUniformLocation(m_progPost, "uFocusDistance"), focusDist);
+        glUniform1f(glGetUniformLocation(m_progPost, "uBlurStrength"), blurStrength);
+    } else {
+        // Disable DoF by setting blur strength to 0
+        glUniform1f(glGetUniformLocation(m_progPost, "uFocusDistance"), m_cam.nearP + 1.0f);
+        glUniform1f(glGetUniformLocation(m_progPost, "uBlurStrength"), 0.0f);
+    }
 
     // Select the preset and exposure based on the two checkboxes in the UI
     int preset = settings.colorGradePreset; // 0 = none, 1 = cold, 3 = rainy
@@ -2177,11 +2262,7 @@ void Realtime::timerEvent(QTimerEvent *event)
         else if (settings.colorGradePreset == 3)
             targetType = 1; // Rain
 
-        // If settings imply a particle type, switch to it.
-        // If settings is "None" (0) or "Cold" (1) or "Rainy" (3).
-        // Let's say default (0) has no particles? Or maybe Snow?
-        // The user asked for "Global Snow or Rain".
-        // Let's map: 1 -> Snow, 3 -> Rain. Others -> Maybe Snow?
+        
 
         if (targetType != -1 && targetType != m_currentParticleType)
         {

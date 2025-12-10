@@ -208,6 +208,8 @@ private:
     // skybox
     GLMesh *m_skyCube = nullptr;
     GLuint m_progSky = 0;
+    GLuint m_texSkySunny = 0; // 晴天 Cubemap
+    GLuint m_texSkyRainy = 0; // 雨天 Cubemap
 
     // --- Vegetation / L-system forest ---
     GLuint m_progForest = 0;
@@ -267,6 +269,7 @@ private:
     void buildRocks();  // Generate/Rebuild Rocks
 
     GLuint loadTexture2D(const QString &path, bool srgb = false);
+    GLuint loadCubemap(const std::vector<QString> &faces); // 加载 Cubemap 的辅助函数
 
     void rebuildWaterMesh();
 

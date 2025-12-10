@@ -31,6 +31,11 @@ struct Settings
     // Post‑processing / color grading
     // 0 = off, 1 = cold blue, 3 = rainy / overcast
     int colorGradePreset = 0;
+
+    // Depth of Field
+    bool enableDoF = false;     // 开关
+    float focusDistance = 15.0f; // 焦距，默认 15
+    float blurStrength = 2.0f;   // 模糊强度，默认 2
 };
 
 // The global Settings object, will be initialized by MainWindow

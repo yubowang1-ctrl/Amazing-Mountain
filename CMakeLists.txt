@@ -145,6 +145,22 @@ qt6_add_resources(${PROJECT_NAME} "Resources"
 
         resources/shaders/particle.frag
         resources/shaders/particle.vert
+
+        # Sky textures - Rainy
+        resources/textures/sky/Rainy/back.jpg
+        resources/textures/sky/Rainy/bottom.jpg
+        resources/textures/sky/Rainy/front.jpg
+        resources/textures/sky/Rainy/left.jpg
+        resources/textures/sky/Rainy/right.jpg
+        resources/textures/sky/Rainy/top.jpg
+
+        # Sky textures - Sunny
+        resources/textures/sky/Sunny/Back.bmp
+        resources/textures/sky/Sunny/Bottom.bmp
+        resources/textures/sky/Sunny/Front.bmp
+        resources/textures/sky/Sunny/Left.bmp
+        resources/textures/sky/Sunny/Right.bmp
+        resources/textures/sky/Sunny/Top.bmp
 )
 # qt_add_resources(${PROJECT_NAME} "res"
 #   PREFIX
