@@ -354,24 +354,58 @@ This yields a believable “fog-eats-the-horizon” atmosphere seen in rainy env
 │   │   ├── terrain.vert/frag       # Multi-layer PBR terrain
 │   │   ├── water.vert/frag         # Animated water surface
 │   │   ├── forest.vert/frag        # Instanced vegetation
+│   │   ├── particle.vert/frag      # Instanced particle system (Snow/Rain)  
 │   │   ├── sky.vert/frag           # Procedural sky gradient
-│   │   └── default.vert/frag       # Basic Phong shader
+│   │   ├── default.vert/frag       # Basic Phong shader
 │   │   └── post.vert/frag          # Postprocessing pipeline + Color grading
 │   └── textures/                   # PBR texture sets
 │
 └── src/
+    ├── particles/                  # Particle System                      
+    │   ├── particle.h              # Particle struct definition          
+    │   └── particlesystem.cpp/h    # Particle simulation & rendering     
     ├── shapes/                     # Primitive tessellation (from Project 5)
     ├── terrain/
     │   ├── terraingenerator.cpp/h  # Procedural terrain (fBm, rivers, craters)
     │   └── voxel_chunk.cpp/h       # (Unused) voxel terrain experiment
     ├── utils/
     │   ├── aspectratiowidget/      # Qt widget utility
+    │   ├── bezier.h                # Generic Bezier Spline implementation   
+    │   ├── camera_path.h           # Camera path management               
     │   ├── gl_mesh.h               # GLMesh wrapper with instanced draw
     │   ├── sceneparser.cpp/h       # Scene file parsing
     │   └── shaderloader.h          # Shader compilation utilities
     ├── vegetation/
     │   └── lsystem_tree.cpp/h      # L-System grammar & turtle interpreter
     ├── camera.cpp/h                # Camera controls (view/proj, movement)
-    ├── mainwindow.cpp/h            # Qt main window & UI connections
-    └── realtime.cpp/h              # Main render loop, initialization
+    ├── mainwindow.cpp├── resources/
+│   ├── shaders/                    # GLSL shader source files
+│   │   ├── terrain.vert/frag       # Multi-layer PBR terrain
+│   │   ├── water.vert/frag         # Animated water surface
+│   │   ├── forest.vert/frag        # Instanced vegetation
+│   │   ├── particle.vert/frag      # Instanced particle system (Snow/Rain)  
+│   │   ├── sky.vert/frag           # Procedural sky gradient
+│   │   ├── default.vert/frag       # Basic Phong shader
+│   │   └── post.vert/frag          # Postprocessing pipeline + Color grading
+│   └── textures/                   # PBR texture sets
+│
+└── src/
+    ├── particles/                  # Particle System                      
+    │   ├── particle.h              # Particle struct definition     
+    │   └── particlesystem.cpp/h    # Particle simulation & rendering       
+    ├── shapes/                     # Primitive tessellation (from Project 5)
+    ├── terrain/
+    │   ├── terraingenerator.cpp/h  # Procedural terrain (fBm, rivers, craters)
+    │   └── voxel_chunk.cpp/h       # (Unused) voxel terrain experiment
+    ├── utils/
+    │   ├── aspectratiowidget/      # Qt widget utility
+    │   ├── bezier.h                # Generic Bezier Spline implementation  
+    │   ├── camera_path.h           # Camera path management                
+    │   ├── gl_mesh.h               # GLMesh wrapper with instanced draw
+    │   ├── sceneparser.cpp/h       # Scene file parsing
+    │   └── shaderloader.h          # Shader compilation utilities
+    ├── vegetation/
+    │   └── lsystem_tree.cpp/h      # L-System grammar & turtle interpreter
+    ├── camera.cpp/h                # Camera controls (view/proj, movement)
+    ├── mainwindow.cpp
 ```
